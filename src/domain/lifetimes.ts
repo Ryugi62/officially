@@ -9,6 +9,8 @@ export const PROJECT_RECORD_SECONDS = 365 * DAY
 export const ENDPOINT_LEASE_SECONDS = 30 * DAY
 /** A warning lives 72 hours unless someone — anyone — keeps it alive. */
 export const INCIDENT_SECONDS = 72 * 60 * 60
+/** How long a warning lives by severity: 1 caution 24 h, 2 do-not-sign 72 h, 3 compromised 7 days. Keep-alive restarts the same clock. */
+export const incidentSeconds = (severity: number) => (severity >= 3 ? 7 * DAY : severity === 2 ? INCIDENT_SECONDS : DAY)
 
 /** Incidents are handed to this address in the batch that creates them: no key can delete them afterwards. */
 export const BURN_ADDRESS = "0x000000000000000000000000000000000000dEaD" as Address

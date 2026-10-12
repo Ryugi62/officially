@@ -83,7 +83,7 @@ describe("raiseIncident (UC-4, AC-10)", () => {
     expect(b.creates).toHaveLength(1)
     const c = b.creates[0]!
     expect(c.flags).toEqual({ readonly: true, permissionlessExtension: true })
-    expect(c.expiresInSeconds).toBe(INCIDENT_SECONDS)
+    expect(c.expiresInSeconds).toBe(7 * 24 * 3600) // severity 3 = compromised
     const [predicted] = await w.predictKeys(1)
     expect(c.salt).toBe(predicted!.salt)
     expect(b.ownershipChanges).toEqual([{ key: predicted!.key, newOwner: BURN_ADDRESS }])
@@ -158,5 +158,18 @@ describe("renewal respects retirement", () => {
     const w = new FakeWriter(PUB_A)
     await publishEndpoints(w, { projectSlug: "demo-swap", endpoints: [{ raw: "https://v1.demo-swap.example", label: "v1", retireInSeconds: 3600 }] })
     expect(w.batches[0]!.creates[0]!.payload).toMatchObject({ retiring: true })
+  })
+})
+
+describe("incident lifetime by severity", () => {
+  it("1 → 24 h, 2 → 72 h, 3 → 7 days; keep-alive restarts the clock of the given severity", async () => {
+    for (const [sev, secs] of [[1, 86_400], [2, INCIDENT_SECONDS], [3, 604_800]] as const) {
+      const w = new FakeWriter(PUB_A)
+      await raiseIncident(w, { raw: undefined, severity: sev, title: "t", advice: "a", projectSlug: "s" })
+      expect(w.batches[0]!.creates[0]!.expiresInSeconds).toBe(secs)
+    }
+    const w = new FakeWriter(PUB_B)
+    await keepAlive(w, { incidentKey: ("0x" + "2".repeat(64)) as `0x${string}`, severity: 3 })
+    expect(w.batches[0]!.extensions[0]!.expiresInSeconds).toBe(604_800)
   })
 })

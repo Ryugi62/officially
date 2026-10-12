@@ -18,7 +18,7 @@ export const CONTRACT = {
       attributes: { app: "str", type: "str", project_slug: "str", kind: "str", target_hash: "bytes32" },
     },
     incident: {
-      lifetime: "72 hours",
+      lifetime: "24 hours / 72 hours / 7 days by severity",
       attributes: { app: "str", type: "str", project_slug: "str", target_hash: "bytes32", severity: "i32" },
     },
   },

@@ -21,7 +21,7 @@ Write (keys from environment variables, never from arguments):
   OFFICIALLY_PUBLISHER_KEY  officially publish --slug <slug> --endpoint "<target>|<label>" [--endpoint …] [--chain <id>]
   OFFICIALLY_PUBLISHER_KEY  officially renew
   OFFICIALLY_PUBLISHER_KEY  officially incident (--target <t> | --project-wide) --severity 1|2|3 --title <t> --advice <a> --slug <slug>
-  OFFICIALLY_KEY            officially keep-alive <incidentKey>        (any funded wallet)
+  OFFICIALLY_KEY            officially keep-alive <incidentKey> [--severity 1|2|3]   (any funded wallet)
   OFFICIALLY_ROOT_KEY       officially rotate --publisher <0x> --slug <slug> --name <name> [--anchor github=<url>]
 
 Exit code 0 = OFFICIAL, 1 = anything else, 2 = error.`
@@ -127,7 +127,8 @@ export async function main(argv: string[]): Promise<number> {
     case "keep-alive": {
       const key = a.positional[0]
       if (!key) throw new Error("keep-alive needs an incident key")
-      console.log(JSON.stringify(await keepAlive(writer("OFFICIALLY_KEY"), { incidentKey: key as Hex }), big, 2))
+      const sev = opt(a, "severity")
+      console.log(JSON.stringify(await keepAlive(writer("OFFICIALLY_KEY"), { incidentKey: key as Hex, ...(sev && { severity: Number(sev) }) }), big, 2))
       return 0
     }
     case "rotate": {

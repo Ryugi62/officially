@@ -1,0 +1,4 @@
+# 2026-10-12T02:12:40Z node v24.20.0 npx tsx scripts/repro/ws-incident-latency.ts
+feed transport: webSocket
+incident 0x828e576bd44b8157cae37a2fb95d09caa72e0ce1bd5ff9d463287e0f97f51897 tx 0x4787410d8378f0276d35f2ca6c4e3e670cd5b667988e80e4e5eae3304d61a8f4 write resolved after 4471 ms
+pushed event for 0x828e576bd44b8157cae37a2fb95d09caa72e0ce1bd5ff9d463287e0f97f51897 (matches) after 5288 ms from send, 817 ms after the write resolved

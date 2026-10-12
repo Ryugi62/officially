@@ -1,6 +1,6 @@
 import { CONTRACT, NAMESPACE, type EntityName } from "../domain/contract"
 import { hashTarget, PROJECT_WIDE } from "../domain/hash"
-import { BLOCK_SECONDS, BURN_ADDRESS, ENDPOINT_LEASE_SECONDS, INCIDENT_SECONDS, PROJECT_RECORD_SECONDS } from "../domain/lifetimes"
+import { BLOCK_SECONDS, BURN_ADDRESS, ENDPOINT_LEASE_SECONDS, incidentSeconds, PROJECT_RECORD_SECONDS } from "../domain/lifetimes"
 import { assertNoSensitive } from "../domain/sensitive"
 import { normalizeTarget } from "../domain/target"
 import type { Address, Anchor, Hex } from "../domain/types"
@@ -76,7 +76,7 @@ export async function raiseIncident(
           severity: input.severity,
         }),
         payload: { target: target?.value ?? "*", title: input.title, advice: input.advice },
-        expiresInSeconds: INCIDENT_SECONDS,
+        expiresInSeconds: incidentSeconds(input.severity),
         flags: { readonly: true, permissionlessExtension: true },
         salt: predicted.salt,
       },
@@ -87,8 +87,8 @@ export async function raiseIncident(
 }
 
 /** UC-5: anyone keeps a warning alive for another 72 hours (permissionless extension). */
-export async function keepAlive(writer: AttestationWriter, input: { incidentKey: Hex }) {
-  const res = await writer.submit({ ...emptyBatch(), extensions: [{ key: input.incidentKey, expiresInSeconds: INCIDENT_SECONDS }] })
+export async function keepAlive(writer: AttestationWriter, input: { incidentKey: Hex; severity?: number }) {
+  const res = await writer.submit({ ...emptyBatch(), extensions: [{ key: input.incidentKey, expiresInSeconds: incidentSeconds(input.severity ?? 2) }] })
   return { txHash: res.txHash }
 }
 

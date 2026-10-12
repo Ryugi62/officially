@@ -9,7 +9,7 @@ A test (`tests/adapters/schema-contract.test.ts`) fails if this table and the co
 |---|---|---|---|---|---|
 | `project` | the project's **root key** (cold) | 365 days | Names who may publish for the project; replaced, never edited, when the publisher key rotates | `readonly` | root key |
 | `endpoint` | the project's **publisher key** (hot) | 30 days, renewed on every deploy (Lifetime Extension) | A lease: an endpoint stays official only while the team keeps renewing it, so abandoned domains and retired contracts lapse by themselves | `readonly` | publisher key |
-| `incident` | publisher or root key | 72 hours, extendable **by anyone** | A warning should outlive a team that went dark; anyone who still sees the threat can keep it alive, nobody can edit or delete it | `readonly`, `permissionlessExtension` | burn address `0x000000000000000000000000000000000000dEaD` (handed over in the same batch) |
+| `incident` | publisher or root key | by severity: 1 caution 24 hours · 2 do-not-sign 72 hours · 3 compromised 7 days — extendable **by anyone** | A warning should outlive a team that went dark; anyone who still sees the threat can keep it alive, nobody can edit or delete it. Worse threats get longer lives | `readonly`, `permissionlessExtension` | burn address `0x000000000000000000000000000000000000dEaD` (handed over in the same batch) |
 
 ## Attributes
 
@@ -74,7 +74,7 @@ A check of one link, or of a whole transaction (origin + contract + spender), co
 | Publish endpoints | publisher | N × create `endpoint` | A deploy's endpoint set appears all at once or not at all |
 | Renew leases | publisher | N × `extendEntity` (30 days from now) on every live claim not marked `retiring` | One transaction per deploy, one nonce |
 | Raise incident | publisher or root | create `incident` (salt from `predictEntityKeys`) + `changeOwnership` → burn address | The warning never exists for a single block in a state where a stolen key could delete it |
-| Keep a warning alive | **anyone** | `extendEntity` on the incident (72 hours from now) | — (permissionless extension) |
+| Keep a warning alive | **anyone** | `extendEntity` on the incident (its severity's lifetime, counted from now — Lifetime Extension sets, it does not add) | — (permissionless extension) |
 | Rotate publisher | root | create new `project` record (`revokes` = old publisher) + delete the old record | There is never a moment with zero or two authorized publishers |
 
 ## Verdicts (computed in `src/domain/verdict.ts`, rules in order)

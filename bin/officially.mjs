@@ -25906,6 +25906,8 @@ var PROJECT_RECORD_SECONDS = 365 * DAY;
 var ENDPOINT_LEASE_SECONDS = 30 * DAY;
 /** A warning lives 72 hours unless someone — anyone — keeps it alive. */
 var INCIDENT_SECONDS = 259200;
+/** How long a warning lives by severity: 1 caution 24 h, 2 do-not-sign 72 h, 3 compromised 7 days. Keep-alive restarts the same clock. */
+var incidentSeconds = (severity) => severity >= 3 ? 7 * DAY : severity === 2 ? INCIDENT_SECONDS : DAY;
 /** Incidents are handed to this address in the batch that creates them: no key can delete them afterwards. */
 var BURN_ADDRESS = "0x000000000000000000000000000000000000dEaD";
 /** New endpoints are held this long (48 h of 2-second blocks) before they count as official. */
@@ -26198,7 +26200,7 @@ var CONTRACT = {
 			}
 		},
 		incident: {
-			lifetime: "72 hours",
+			lifetime: "24 hours / 72 hours / 7 days by severity",
 			attributes: {
 				app: "str",
 				type: "str",
@@ -26349,7 +26351,7 @@ async function raiseIncident(writer, input) {
 				title: input.title,
 				advice: input.advice
 			},
-			expiresInSeconds: INCIDENT_SECONDS,
+			expiresInSeconds: incidentSeconds(input.severity),
 			flags: {
 				readonly: true,
 				permissionlessExtension: true
@@ -26373,7 +26375,7 @@ async function keepAlive(writer, input) {
 		...emptyBatch(),
 		extensions: [{
 			key: input.incidentKey,
-			expiresInSeconds: INCIDENT_SECONDS
+			expiresInSeconds: incidentSeconds(input.severity ?? 2)
 		}]
 	})).txHash };
 }
@@ -26705,7 +26707,7 @@ Write (keys from environment variables, never from arguments):
   OFFICIALLY_PUBLISHER_KEY  officially publish --slug <slug> --endpoint "<target>|<label>" [--endpoint …] [--chain <id>]
   OFFICIALLY_PUBLISHER_KEY  officially renew
   OFFICIALLY_PUBLISHER_KEY  officially incident (--target <t> | --project-wide) --severity 1|2|3 --title <t> --advice <a> --slug <slug>
-  OFFICIALLY_KEY            officially keep-alive <incidentKey>        (any funded wallet)
+  OFFICIALLY_KEY            officially keep-alive <incidentKey> [--severity 1|2|3]   (any funded wallet)
   OFFICIALLY_ROOT_KEY       officially rotate --publisher <0x> --slug <slug> --name <name> [--anchor github=<url>]
 
 Exit code 0 = OFFICIAL, 1 = anything else, 2 = error.`;
@@ -26831,7 +26833,11 @@ async function main(argv) {
 		case "keep-alive": {
 			const key = a.positional[0];
 			if (!key) throw new Error("keep-alive needs an incident key");
-			console.log(JSON.stringify(await keepAlive(writer("OFFICIALLY_KEY"), { incidentKey: key }), big, 2));
+			const sev = opt(a, "severity");
+			console.log(JSON.stringify(await keepAlive(writer("OFFICIALLY_KEY"), {
+				incidentKey: key,
+				...sev && { severity: Number(sev) }
+			}), big, 2));
 			return 0;
 		}
 		case "rotate": {
