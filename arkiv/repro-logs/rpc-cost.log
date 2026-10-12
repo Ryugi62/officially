@@ -1,0 +1,4 @@
+# 2026-10-12T02:21:45Z cost per call (headers) on the anonymous public RPC
+eth_blockNumber  => HTTP/2 200  access-control-expose-headers: RateLimit, Retry-After, Link, Arkiv-Quota-Used-Percent, Arkiv-Cost ratelimit: limit=600, remaining=592, reset=1 
+arkiv_query {'limit': '0x1'} => HTTP/2 200  access-control-expose-headers: RateLimit, Retry-After, Link, Arkiv-Quota-Used-Percent, Arkiv-Cost arkiv-cost: 100 ratelimit: limit=600, remaining=599, reset=60 
+arkiv_query {'limit': '0xc8', 'select': {'key': True, 'attributes': True, 'payload': True}} => HTTP/2 429  access-control-expose-headers: RateLimit, Retry-After, Link, Arkiv-Quota-Used-Percent, Arkiv-Cost ratelimit: limit=10000, remaining=0, reset=824 retry-after: 824 

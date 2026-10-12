@@ -7,6 +7,7 @@ import type { AttestationReader } from "../application/ports"
 import { ArkivIncidentFeed, createFeedClient } from "../adapters/arkiv/feed"
 import { ArkivReader, ReadTimeoutError } from "../adapters/arkiv/reader"
 import { readerFromSnapshot } from "../adapters/memory/memory-reader"
+import { CachingReader } from "../adapters/memory/caching-reader"
 import { approveCalldata } from "../adapters/web/calldata"
 import { esc, renderVerdict, statusCopy, type RenderCtx } from "../adapters/web/view"
 import type { Verdict } from "../domain/types"
@@ -16,7 +17,7 @@ const EXPLORER = "https://tiramisu.explorer.arkiv.network"
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 
 const publicClient = createPublicClient({ chain: tiramisu, transport: http(undefined, { retryCount: 0 }) })
-const live: AttestationReader = new ArkivReader(publicClient)
+const live = new CachingReader(new ArkivReader(publicClient))
 let reader: AttestationReader = live
 let usingSnapshot = false
 const pin = { rootKey: DEMO.rootKey, slug: DEMO.slug }
@@ -105,6 +106,7 @@ function startFeed() {
     },
   )
   feed.subscribe([DEMO.rootKey, DEMO.publisher], (key) => {
+    live.invalidateAttestations()
     $("incidents").insertAdjacentHTML("afterbegin", `<div class="banner">New incident from ${esc(DEMO.name)} — entity <a href="${EXPLORER}/entity/${esc(key)}" target="_blank" rel="noopener">${esc(key.slice(0, 10))}…</a>. Re-checking…</div>`)
     void runGuard()
     if ($<HTMLInputElement>("q").value.trim()) void runCheck()

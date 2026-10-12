@@ -1,0 +1,6 @@
+# 2026-10-12T02:21:28Z curl -i arkiv_query on the public RPC from this IP after a day of development
+HTTP/2 200 
+access-control-allow-origin: *
+access-control-expose-headers: RateLimit, Retry-After, Link, Arkiv-Quota-Used-Percent, Arkiv-Cost
+ratelimit: limit=600, remaining=593, reset=17
+{"jsonrpc":"2.0","id":1,"result":"0x708a8"}

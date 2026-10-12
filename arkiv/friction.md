@@ -48,6 +48,14 @@ Every item below has a runnable repro in `scripts/repro/` (or `scripts/`) and th
 - **Impact on us**: we believed the docs and claimed the faucet once per wallet (4 sign-ins, 1-hour cooldown each) instead of funding three wallets from one.
 - **What would fix it**: say that value transfers are accepted and only contract calls/deployments revert (or whatever the intended rule is) — teams planning gas for several writer wallets need to know.
 
+### F6 — The anonymous RPC budget is two windows and per-call costs, visible only in response headers
+- **Surface**: public Tiramisu RPC without an access key. Docs "Access Keys": "The public RPC works without one, at the default rate limit." — no numbers.
+- **Expected**: a documented budget, so an app meant to be opened by judges and users without a key can be sized.
+- **Actual** (headers we captured): `ratelimit: limit=600, remaining=599, reset=60` and `arkiv-cost: 100` for one `arkiv_query`; after a day of development the same IP got `HTTP 429` with `ratelimit: limit=10000, remaining=0, reset=824` and `retry-after: 824`. So there is a 600-unit-per-minute window **and** a 10,000-unit longer window, and one query costs 100: about 6 queries a minute and 100 per window per IP. Our own headless check of the deployed page (two page loads, a few seconds apart) received a 429 in the browser console.
+- **Repro**: `arkiv/repro-logs/rpc-cost.log` (curl of three calls with headers), `arkiv/repro-logs/rpc-429.log`. Related: reported-issues #17 (SDK silently waits out `Retry-After` when retries are on).
+- **Impact on us**: a judge who flips the demo switch a few times would exhaust the per-minute window. We added a caching reader (`src/adapters/memory/caching-reader.ts`: project records 5 min, checks 20 s, invalidated by the live incident feed), `retryCount: 0` plus a 15 s timeout, and a published snapshot fallback that the page announces when it is used.
+- **What would fix it**: put both windows and the per-method costs in the Access Keys page, and make the SDK surface a 429 as a typed error with the `Retry-After` value instead of waiting.
+
 ---
 
 ## Smooth paths (tested, worked as documented)
