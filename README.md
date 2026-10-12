@@ -16,6 +16,8 @@ Officially checks, right before you sign, that the contract or spender your wall
 - Data contract [`/arkiv/schema.md`](arkiv/schema.md) · Friction report [`/arkiv/friction.md`](arkiv/friction.md) · On-chain evidence [`/arkiv/evidence.md`](arkiv/evidence.md) · Feature check [`/arkiv/features.md`](arkiv/features.md) · Spec [`SPEC.md`](SPEC.md)
 - Tracks: **Security** (primary), Censorship Resistance, Open Source. All demo data is synthetic: a fictional "Demo Swap" on `*.example` domains with made-up addresses.
 
+![The guard on a hijacked site: same domain, unpublished spender, shown as forged](docs/img/hijacked.png)
+
 ## Who is misled today
 
 | When | What happened | Loss | Source |

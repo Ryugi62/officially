@@ -1,0 +1,8 @@
+# 2026-10-12T02:41:59Z headless Chromium on the deployed app + CLI incident from another process
+2.4s initial: 3 of 3 published · 3 on holdPublished by Demo Swap's key less than 48 h ago — on hold
+6.9s hijacked: 2 of 3 published · 2 on holdForged — claimed by a key that is not Demo Swap's
+7.0s feed: Listening over a WebSocket for incidents signed by this project's keys. A new one re-runs your checks — no reload.
+7.0s raising an incident from another process (CLI, publisher key)…
+11.5s cli done { "key": "0xbcc5d6621b04d0af4b6140120d7e110ab41f477d890a686bfb568edcda3aa8d1", "txHash": "0x99958f938733e2d4d268c6e3b686d262ce9faea6a983c73bc933163def61258b", "
+11.8s banner appeared without reload, 4830 ms after sending: New incident from Demo Swap — 0xbcc5d662…. Re-checking…
+14.9s navigations: 1

@@ -74,7 +74,7 @@ Every item below has a runnable repro in `scripts/repro/` (or `scripts/`) and th
 
 ### S4 — `watchEntityEvents` over a WebSocket transport, no `fromBlock`
 - **Tested**: subscribe with `createPublicClient({ transport: webSocket(wss://…) })`, then raise an incident from another process.
-- **Expected → result**: transport type `webSocket`; the `EntityCreated` event for the same key arrived 817 ms after the write resolved (5.3 s after send, including ~2 s blocks) (`ws-incident-latency.log`). Note: as [sdk-js #112](https://github.com/Arkiv-Network/arkiv-sdk-js/issues/112) says, nothing tells the caller whether it is pushing or polling; we infer push from the transport.
+- **Expected → result**: transport type `webSocket`; the `EntityCreated` event for the same key arrived 817 ms after the write resolved (5.3 s after send, including ~2 s blocks) (`ws-incident-latency.log`). In the browser (headless Chromium on the deployed page), an incident raised by the CLI from another process showed its banner 4,830 ms after sending, with one page navigation in total (`browser-live.log`). Note: as [sdk-js #112](https://github.com/Arkiv-Network/arkiv-sdk-js/issues/112) says, nothing tells the caller whether it is pushing or polling; we infer push from the transport.
 
 ### S5 — Public reads from Node and from a static page, no key
 - **Tested**: 10 checks (half single links, half whole transactions) against the public RPC.
