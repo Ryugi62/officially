@@ -7,18 +7,29 @@ export class FakeReader implements AttestationReader {
     public records: ProjectRecord[] = [],
     public claims: EndpointClaim[] = [],
     public incidents: Incident[] = [],
-    public block = 500n,
+    public block = 100_000n,
   ) {}
   async findProjectRecords(rootKey: Address) {
     this.calls.push("findProjectRecords")
     return this.records.filter((r) => r.creator.toLowerCase() === rootKey.toLowerCase())
   }
-  async findAttestations(targetHash: Hex) {
+  pageLimit = 200
+  async findAttestations(targetHashes: Hex[], creators?: Address[]) {
     this.calls.push("findAttestations")
+    const by = (a: Address) => !creators || creators.some((c) => c.toLowerCase() === a.toLowerCase())
+    const items = [
+      ...this.claims.filter((c) => targetHashes.includes(c.targetHash) && by(c.creator)),
+      ...this.incidents.filter((i) => (targetHashes.includes(i.targetHash) || /^0x0{64}$/.test(i.targetHash)) && by(i.creator)),
+    ].slice(0, this.pageLimit)
     return {
-      claims: this.claims.filter((c) => c.targetHash === targetHash),
-      incidents: this.incidents.filter((i) => i.targetHash === targetHash || /^0x0{64}$/.test(i.targetHash)),
+      claims: items.filter((x): x is EndpointClaim => x.entity === "endpoint"),
+      incidents: items.filter((x): x is Incident => x.entity === "incident"),
+      atBlock: this.block,
     }
+  }
+  async findClaimants(targetHashes: Hex[], limit: number) {
+    this.calls.push("findClaimants")
+    return this.claims.filter((c) => targetHashes.includes(c.targetHash)).slice(0, Math.min(limit, this.pageLimit))
   }
   async findClaimsByCreator(creator: Address) {
     this.calls.push("findClaimsByCreator")

@@ -1,12 +1,13 @@
-# Officially — SPEC (SDD, v0.1 2026-10-12)
+# Officially — SPEC (SDD, v0.2 2026-10-12)
 
 ## 0. One line
-**Officially** lets anyone check, with no server in between, whether a link, contract address or social handle was published by a Web3 project's own key, whether that publication is still live, and whether the project has raised an incident on it.
-The essence is **not** "another phishing blocklist" (a vendor's opinion, updated after the fact) but **the project's own signed, expiring allowlist that nobody can edit, censor or take down — including the project's hijacked DNS, its hacked X account, or us.**
+**Officially** checks, right before you sign, whether the contract or spender your wallet is asked to approve — and the site and handle asking — were published by that Web3 project's own key, are still live, and are not under an incident the project raised. No server, no indexer: the check is one Arkiv query anyone can run.
+The essence is **not** "another phishing blocklist" (a vendor's opinion, updated after the fact) and **not** "is this URL official" (a hijacked DNS serves the official URL) but **"is the address I am about to approve one the project itself published?"** — a hijacked frontend can change everything on the page except the project's key.
 
 ## 1. Success conditions (numbers) · deadline (constant) · non-goals
 - Reference (same problem, existing results): MetaMask `eth-phishing-detect` (vendor-curated block/allow list, GitHub), Blockaid/ScamSniffer (vendor scanning), Uniswap interface releases (per-release IPFS CID the user verifies by hand). None is authored by the project's own key and queryable across projects. Harm this targets: Curve DNS hijack 2022-08-09 (~$573K), Balancer DNS hijack 2023-09-19 (~$238K), Curve DNS hijack again 2025-05-12.
 - Success:
+  - A transaction request (approve / increaseAllowance / setApprovalForAll / Permit2 approve / EIP-2612 permit typed data) is decoded and every address it would authorize is checked; an unpublished spender on the official domain yields `FORGED`/`UNLISTED`, never `OFFICIAL` (test with the Curve-2022 shape: official origin, malicious spender).
   - A check of one target costs **≤ 3 RPC calls** and returns a verdict in **≤ 3 s** (p50, public Tiramisu RPC, measured by `scripts/measure-latency`).
   - The verdict depends **only** on `$creator` / `createdBy()` for trust; changing any writable attribute (`project_slug`, `kind`) never turns a forged claim into an official one (property test).
   - A second client (CLI) that imports nothing from the web app reproduces every verdict of the shared fixture set (contract test).
@@ -39,7 +40,9 @@ The essence is **not** "another phishing blocklist" (a vendor's opinion, updated
 | Keep-alive | Anyone extending an Incident's lifetime (created with permissionless extension). | `keepAlive` |
 | Burn | Transferring an Incident's ownership to the burn address in the same batch that creates it, so no key — not even a stolen publisher key — can delete it. | `BURN_ADDRESS` |
 | Pin | A user's local record of which root key is project X (trust on first use, checked against anchors). | `Pin` |
-| Verdict | Result of a check: `OFFICIAL`, `INCIDENT`, `FORGED`, `REVOKED`, `UNLISTED`, `UNPINNED`. | `Verdict` |
+| Probation | A trusted claim younger than 48 hours (86,400 blocks): shown as published but not yet official, giving the team time to notice a stolen publisher key. | `PROBATION` |
+| Transaction check | Decoding a wallet request into the addresses it authorizes (`to`, spender, operator) plus the requesting origin, and checking each. | `checkTransaction` |
+| Verdict | Result of a check: `OFFICIAL`, `PROBATION`, `INCIDENT`, `FORGED`, `REVOKED`, `UNLISTED`, `UNPINNED`. | `Verdict` |
 
 ## 4. Bounded context · domain model
 - Context: **Endpoint attestation** (one context). Arkiv is an adapter behind ports.
@@ -51,12 +54,14 @@ The essence is **not** "another phishing blocklist" (a vendor's opinion, updated
 ### Verdict rules (pure, in order)
 1. Trusted set T = {rootKey} ∪ {publisher of every live Project record **created by** rootKey}.
 2. Any live Incident on the target hash, or project-wide (target hash = 0x00…00), **created by** a key in T → `INCIDENT` (overrides everything below).
-3. A live Endpoint claim on the target hash **created by** a key in T → `OFFICIAL` (with lease expiry and the creating key).
+3. A live Endpoint claim on the target hash **created by** a key in T → `OFFICIAL` (with lease expiry and the creating key) — or `PROBATION` if every such claim is younger than 48 h (filtered in code: `$createdAt` cannot be queried).
 4. A live claim on the target hash created by a key that appeared in a **deleted/superseded** Project record of rootKey → `REVOKED`.
 5. A live claim on the target hash created by any other key, whatever its self-declared `project_slug` → `FORGED` (shows the real creator).
 6. No live claim on the target hash → `UNLISTED` ("this project has not published it").
 7. No pinned root for the project → `UNPINNED`, with the list of creators that claim the target (reverse lookup) so the user can pin after checking anchors.
 Writable attributes (`project_slug`, `kind`, payload fields) are displayed but never used in rules 1–6.
+Incidents can only **restrict** (mark targets unsafe); their text is rendered as plain text with links removed, so a stolen key cannot use a long-lived warning to redirect users.
+A transaction verdict is the worst of its parts, in the order INCIDENT > FORGED > REVOKED > UNLISTED > UNPINNED > PROBATION > OFFICIAL.
 
 ## 5. Use cases (application)
 | UC | Input | Output | Rules |
@@ -69,6 +74,7 @@ Writable attributes (`project_slug`, `kind`, payload fields) are displayed but n
 | UC-6 RotatePublisher | root wallet, new publisher | new record key | one batch: create new Project record + delete the old one (never zero or two authorized records) |
 | UC-7 WatchIncidents | trusted set | live UI update | `watchEntityEvents` over WebSocket, no `fromBlock`; filter `EntityCreated` by creator ∈ T and type `incident` |
 | UC-8 ListProjects | cursor | page of Project records | cursor pagination, ≤ 200/page |
+| UC-9 CheckTransaction | request (`to`, `data`, `chainId`) or EIP-712 typed data, origin, pin | combined Verdict + per-address verdicts | decode known approval selectors; every authorized address and the origin are checked; worst wins |
 
 ## 6. Acceptance criteria (Given/When/Then) — each becomes ≥ 1 test
 - AC-1 normalize: Given `HTTPS://App.Example.org/swap?x=1#y`, When normalized, Then target = `https://app.example.org` (origin only, lowercase host, default port dropped). Given `0xAbC…` with chain 1, Then `eip155:1:0xabc…`. Given `@Curve`/`https://x.com/Curve`, Then `x:@curve`.
@@ -86,6 +92,11 @@ Writable attributes (`project_slug`, `kind`, payload fields) are displayed but n
 - AC-13 reads budget: CheckTarget performs ≤ 3 reader calls.
 - AC-14 watch: the incident feed is built with a WebSocket transport and without `fromBlock`; an `EntityCreated` of type incident by a trusted creator flips the shown verdict without a page reload.
 - AC-15 schema contract: every attribute name written by the writer is listed in `/arkiv/schema.md` with the same type; the CLI parses entities using only the schema (no import from `src/web`).
+- AC-17 probation: a trusted claim created < 86,400 blocks ago → `PROBATION`; ≥ → `OFFICIAL`.
+- AC-18 transaction decode: `approve(spender,amount)` 0x095ea7b3, `increaseAllowance` 0x39509351, `setApprovalForAll(operator,bool)` 0xa22cb465, Permit2 `approve(token,spender,amount,expiration)` 0x87517c45, EIP-2612 typed data `Permit.spender` → the authorized address is extracted; unknown selectors check only `to`.
+- AC-19 Curve-2022 shape: official origin + official token contract + unpublished spender → transaction verdict `FORGED` or `UNLISTED`.
+- AC-20 restrict-only incidents: incident text with a URL is rendered without the link (view test).
+- AC-21 trusted-first reads: with a pin, the attestation query filters `$creator` to the trusted keys, so spam claims by other keys can never push a trusted claim out of the 200-result page; conflicts are counted in a separate bounded query.
 - AC-16 no secrets / personal data: the seed and every writer reject payloads containing a private-key-shaped hex string or an email/phone pattern.
 
 ## 7. Architecture (Clean) — dependencies point inward
@@ -112,4 +123,5 @@ Ports ↔ adapters: `AttestationReader` ↔ `ArkivReader` (public client, HTTP) 
 - Open the deployed URL in a logged-out browser at 390 px and 1280 px; capture screenshots; verify a live incident flips the verdict without reload.
 
 ## 10. Change log
-- v0.1 2026-10-12 first version (idea chosen by blind scoring; see submission notes).
+- v0.1 2026-10-12 first version (idea chosen by blind scoring).
+- v0.2 2026-10-12 red-team pivot: the headline check moves to the signing path (UC-9), 48 h probation, restrict-only incidents, trusted-first queries; synthetic demo projects only (no real project signed by our key).

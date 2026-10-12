@@ -7,7 +7,7 @@ import { normalizeTarget } from "../../src/domain/target"
 import { claim, EVIL, incident, PUB_A, PUB_B, record, ROOT } from "../fixtures"
 
 const H = hashTarget(normalizeTarget("https://app.demo-swap.example"))
-const NOW = 500n
+const NOW = 100_000n
 const pin = { rootKey: ROOT }
 
 describe("decideVerdict", () => {
@@ -15,11 +15,11 @@ describe("decideVerdict", () => {
     const v = decideVerdict({
       targetHash: H, currentBlock: NOW, pin,
       projectRecords: [record({ publisher: PUB_A })],
-      claims: [claim({ targetHash: H, creator: PUB_A, expiresAtBlock: 9_000n })],
+      claims: [claim({ targetHash: H, creator: PUB_A, expiresAtBlock: 900_000n })],
       incidents: [],
     })
     expect(v.status).toBe("OFFICIAL")
-    expect(v.leaseExpiresAtBlock).toBe(9_000n)
+    expect(v.leaseExpiresAtBlock).toBe(900_000n)
     expect(v.trustedBy).toBe(PUB_A)
   })
 
@@ -190,5 +190,36 @@ describe("decideVerdict", () => {
       incidents: [],
     })
     expect(v.status).toBe("UNLISTED")
+  })
+})
+
+describe("probation (AC-17)", () => {
+  it("a trusted claim younger than 48 h is PROBATION, older is OFFICIAL", () => {
+    const young = decideVerdict({
+      targetHash: H, currentBlock: 100_000n, pin,
+      projectRecords: [record({ publisher: PUB_A })],
+      claims: [claim({ targetHash: H, creator: PUB_A, createdAtBlock: 100_000n - 86_399n, expiresAtBlock: 2_000_000n })],
+      incidents: [],
+    })
+    expect(young.status).toBe("PROBATION")
+    const old = decideVerdict({
+      targetHash: H, currentBlock: 100_000n, pin,
+      projectRecords: [record({ publisher: PUB_A })],
+      claims: [claim({ targetHash: H, creator: PUB_A, createdAtBlock: 100_000n - 86_400n, expiresAtBlock: 2_000_000n })],
+      incidents: [],
+    })
+    expect(old.status).toBe("OFFICIAL")
+  })
+  it("one settled claim is enough even if a newer duplicate is on probation", () => {
+    const v = decideVerdict({
+      targetHash: H, currentBlock: 100_000n, pin,
+      projectRecords: [record({ publisher: PUB_A })],
+      claims: [
+        claim({ targetHash: H, creator: PUB_A, createdAtBlock: 99_999n, expiresAtBlock: 2_000_000n }),
+        claim({ targetHash: H, creator: PUB_A, createdAtBlock: 1n, expiresAtBlock: 2_000_000n }),
+      ],
+      incidents: [],
+    })
+    expect(v.status).toBe("OFFICIAL")
   })
 })
