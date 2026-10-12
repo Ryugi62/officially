@@ -151,6 +151,14 @@ Every entity, a link to its explorer page (which shows its creation transaction)
 - Not defended: theft of the **root** key; malicious calldata that pays an official router to send funds elsewhere; wallets that do not expose the request before signing.
 - Tiramisu is a testnet: entities are demo data and may be reset.
 
+## What happens next
+
+| When | Milestone | Target |
+|---|---|---|
+| 14 Oct 2026 | Demo endpoints leave their 48 h hold; the guard passes the genuine approve to the wallet | 3/3 addresses `OFFICIAL` on the live page |
+| 20–22 Oct 2026 | Three demo endpoints retire on schedule during judging | `v1`, `Router v1`, `Beta` read "not published" after 12:00 UTC on their day |
+| Nov 2026 | Browser-extension wrapper around `guardProvider` for one wallet, plus a SEAL Safe Harbor importer (labelled "mirrored", never `OFFICIAL`) | 1 wallet, ≥ 5 mirrored protocols |
+
 ## Pre-existing work, tools
 
 - Pre-existing work: **None**. Everything was built between 12 and 18 October 2026 (first commit 12 October).

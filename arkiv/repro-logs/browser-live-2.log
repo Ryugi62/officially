@@ -1,0 +1,8 @@
+# 2026-10-12T02:55:53Z headless Chromium on the deployed app (guardProvider path) + CLI incident from another process
+2.4s initial: Wait: the origin was published less than 48 h ago3 of 3 addresses published by Demo Swap's keys · 3 on hold · blocked before your wallet saw it
+6.9s hijacked: Do not sign: the spender is forged2 of 3 addresses published by Demo Swap's keys · 2 on hold · blocked before your wallet saw it
+7.0s feed: Listening over a WebSocket for incidents signed by this project's keys. A new one re-runs your checks — no reload.
+7.0s raising an incident from another process (CLI, publisher key)…
+13.3s banner appeared without reload, 6345 ms after sending: New incident from Demo Swap — 0x932bb8f1…. Re-checking…
+16.5s navigations: 1
+16.9s cli done { "key": "0x932bb8f1f05cec214b10951dc98b06c36d21aff0156ae70391675f06fee02cf6", "txHash": "0x22c8f4f57d177495d49e2d893acaeadaa59e6f65aa291b6b7af48dd9246d8604", "
