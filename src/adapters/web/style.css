@@ -24,7 +24,7 @@ input:focus { outline: 2px solid var(--brand); border-color: transparent; }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; word-break: break-all; }
 .btn { display: block; width: 100%; min-height: 52px; margin-top: 16px; border: 0; border-radius: 14px; background: var(--brand); color: #fff; font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; }
 .btn:disabled { opacity: .55; cursor: progress; }
-@media (max-width: 600px) { .cta { position: fixed; left: 16px; right: 16px; bottom: 16px; width: auto; z-index: 5; box-shadow: 0 4px 16px rgba(0,0,0,.18); } }
+@media (max-width: 600px) { .cta { position: sticky; bottom: 16px; z-index: 5; box-shadow: 0 4px 16px rgba(0,0,0,.18); } }
 .pin { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .pin .who { font-weight: 700; }
 .pin .sub { margin: 0; }
