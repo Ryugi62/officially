@@ -1,0 +1,4 @@
+# 2026-10-12T01:46:45Z node v24.20.0 — npx tsx scripts/repro/match-all.ts
+sdk 0.8.1
+InvalidPredicateError: A query needs at least one filter — the language has no spelling for 'match every entity". Add a where(...) predicate, or narrow by ownedBy(...) / createdBy(...).
+entity count via getEntityCount(): 1959

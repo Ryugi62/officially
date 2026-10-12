@@ -1,0 +1,6 @@
+# 2026-10-12T01:46:47Z node v24.20.0 — npx tsx scripts/repro/sys-attr-predicates.ts
+OK   $creator = addr -> $creator = addr(0xc360B9FBB59edDB38042745d315661409Ad16cf9) (entities: 0, block 459928)
+OK   $owner = addr -> $owner = addr(0xc360B9FBB59edDB38042745d315661409Ad16cf9) (entities: 0, block 459928)
+FAIL $createdAt > u64 -> InvalidPredicateError: "$createdAt" is returned in query results but carries no index, so it cannot be filtered on. Select it and filter the results in JavaScript instead.
+OK   $expiresAt > u64 -> $expiresAt > u64(1) (entities: 0, block 459928)
+OK   $creator OR $creator -> $creator = addr(0xc360B9FBB59edDB38042745d315661409Ad16cf9) OR $creator = addr(0x0000000000000000000000000000000000000001) (entities: 0, block 459928)
