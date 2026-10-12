@@ -1,0 +1,7 @@
+# 2026-10-12T02:15:26Z sh scripts/repro/raw-rpc-vs-sdk.sh
+## $createdAt filter (SDK: InvalidPredicateError)
+{"jsonrpc":"2.0","id":1,"result":{"data":[{"key":"0x828e576bd44b8157cae37a2fb95d09caa72e0ce1bd5ff9d463287e0f97f51897","createdAt":"0x707a4"},{"key":"0xe9a60bfdb6907b809da5a208720c9d8ce86e8a08bcf41a088586b98376dda73d","createdAt":"0x7078a"}],"blockNumber":"0x707f3","cursor":"b64:pGtQvgmBNrAAAAAAAAnCkg"}}
+## match everything * (SDK: InvalidPredicateError)
+{"jsonrpc":"2.0","id":1,"result":{"data":[{"key":"0xc4c3f111ffdc2e0efb63fcbd0404a9f7449465ad8580468e8903ac932c2cef8f","createdAt":"0x707f3"},{"key":"0x7bb1a33d412eea74eb00129bbd68f2c1db0b7907166e128c330627191606b0a2","createdAt":"0x707f2"}],"blockNumber":"0x707f3","cursor":"b64:KIpivsWYRosAAAAAAAnDIw"}}
+## control: $creator filter (SDK accepts)
+{"jsonrpc":"2.0","id":1,"result":{"data":[{"key":"0x8cbc354cb4e7b90a49d9e63196b9fa0614ce4153429da342afb79b8f7a5fe3aa","createdAt":"0x70745"}],"blockNumber":"0x707f4"}}
