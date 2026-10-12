@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Officially — check the address before you sign</title>
+<meta name="description" content="Is the contract you're about to approve really the project's? Officially checks it against the project's own key on Arkiv. No server in between.">
+<link rel="stylesheet" href="/src/adapters/web/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">Officially</div>
+    <p class="tagline">A hijacked site can change everything on the page except the project's key.<br>Before you sign, check that the address you approve was published by that key.</p>
+  </div>
+</header>
+<main class="wrap">
+  <section id="pin" class="card pin" aria-live="polite"></section>
+
+  <section class="card">
+    <h2>Try it: approve on a hijacked site</h2>
+    <p class="sub">A synthetic dApp. Flip the switch to simulate a DNS hijack: same domain, same page, different spender.</p>
+    <div class="dapp">
+      <div class="dapp-bar"><span class="lock" aria-hidden="true">🔒</span><span id="dapp-origin"></span></div>
+      <div class="dapp-body">
+        <div class="dapp-row"><span>Approve</span><strong>USDC (demo)</strong></div>
+        <div class="dapp-row"><span>Spender</span><code id="dapp-spender"></code></div>
+        <label class="switch"><input type="checkbox" id="hijack"><span>This site's DNS was hijacked</span></label>
+        <button id="approve" class="btn">Approve</button>
+      </div>
+    </div>
+    <div id="guard" class="result" aria-live="polite"></div>
+  </section>
+
+  <section class="card">
+    <h2>Check anything</h2>
+    <p class="sub">A link, an X handle, a contract address, or a raw transaction request as JSON.</p>
+    <form id="check-form">
+      <label for="q" class="label">What are you about to trust?</label>
+      <input id="q" name="q" autocomplete="off" spellcheck="false" placeholder="https://app.demo-swap.example">
+      <label for="chain" class="label">Chain id (for a bare 0x address)</label>
+      <input id="chain" name="chain" inputmode="numeric" value="11155111">
+      <button class="btn cta" type="submit">Check</button>
+    </form>
+    <div id="result" class="result" aria-live="polite"></div>
+  </section>
+
+  <section class="card">
+    <h2>Live incidents</h2>
+    <p id="live" class="sub">Connecting…</p>
+    <div id="incidents"></div>
+  </section>
+
+  <section class="card how">
+    <h2>How it works</h2>
+    <ol>
+      <li>The project's <b>root key</b> names a <b>publisher key</b> in a readonly Arkiv entity.</li>
+      <li>The publisher publishes its official sites, handles and contracts as readonly Arkiv entities with a 30-day lease, renewed on every deploy.</li>
+      <li>Your check is one Arkiv query that keeps only entities whose immutable <code>$creator</code> is one of those keys. Names and labels anyone can write are never trusted.</li>
+      <li>New endpoints wait 48 hours. Incidents can only restrict, are handed to a burn address so no key can delete them, and anyone can keep them alive.</li>
+    </ol>
+    <p class="sub">No server, no indexer: this page talks straight to Arkiv's Tiramisu RPC. Same check from a terminal: <code>npx github:Ryugi62/officially check https://app.demo-swap.example</code></p>
+    <p class="sub"><a href="https://github.com/Ryugi62/officially">Source (MIT)</a> · <a href="https://github.com/Ryugi62/officially/blob/main/arkiv/schema.md">Data contract</a> · <a href="https://github.com/Ryugi62/officially/blob/main/arkiv/friction.md">Friction report</a></p>
+  </section>
+</main>
+<script type="module" src="/src/infrastructure/web-main.ts"></script>
+</body>
+</html>
