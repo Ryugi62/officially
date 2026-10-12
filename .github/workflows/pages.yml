@@ -22,6 +22,7 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npx vitest run
+      - run: npx tsx scripts/check-docs.ts
       - run: npx vite build
       - name: committed CLI bundle matches the source
         run: npx vite build --config vite.cli.config.ts && git diff --exit-code bin/
