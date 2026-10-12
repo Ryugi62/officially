@@ -86,10 +86,18 @@ export async function raiseIncident(
   return { key: predicted.key, txHash: res.txHash, created: res.created }
 }
 
-/** UC-5: anyone keeps a warning alive for another 72 hours (permissionless extension). */
-export async function keepAlive(writer: AttestationWriter, input: { incidentKey: Hex; severity?: number }) {
-  const res = await writer.submit({ ...emptyBatch(), extensions: [{ key: input.incidentKey, expiresInSeconds: incidentSeconds(input.severity ?? 2) }] })
-  return { txHash: res.txHash }
+/**
+ * UC-5: anyone keeps a warning alive (permissionless extension). Lifetime Extension *sets* the lifetime from now,
+ * so the incident is read first: its own severity decides the lifetime, and if that would not move the expiry
+ * later, nothing is sent (the node would reject it anyway — see friction S3).
+ */
+export async function keepAlive(writer: AttestationWriter, input: { incidentKey: Hex }, reader: AttestationReader) {
+  const [inc, now] = await Promise.all([reader.findIncident(input.incidentKey), reader.currentBlock()])
+  if (!inc) throw new Error("No live incident with that key (expired, or not an incident)")
+  const seconds = incidentSeconds(inc.severity)
+  if (now + BigInt(seconds / BLOCK_SECONDS) <= inc.expiresAtBlock) return { extended: false as const, txHash: undefined }
+  const res = await writer.submit({ ...emptyBatch(), extensions: [{ key: input.incidentKey, expiresInSeconds: seconds }] })
+  return { extended: true as const, txHash: res.txHash }
 }
 
 /** UC-6: name a new publisher and drop the old record in one transaction — never zero, never two. */
@@ -101,13 +109,14 @@ export async function rotatePublisher(
   assertNoSensitive([input.slug, input.name, ...input.anchors.map((a) => a.ref)])
   const current = (await reader.findProjectRecords(writer.address)).filter((r) => r.creator.toLowerCase() === writer.address.toLowerCase())
   const previous = current.find((r) => r.publisher.toLowerCase() !== input.newPublisher.toLowerCase())?.publisher
+  const history = [...new Set([...current.flatMap((r) => r.previousPublishers ?? []), ...(previous ? [previous] : [])].map((a) => a.toLowerCase()))] as Address[]
   const res = await writer.submit({
     ...emptyBatch(),
     creates: [
       {
         entity: "project",
         attributes: attributes("project", { project_slug: input.slug, publisher: input.newPublisher, revokes: previous }),
-        payload: { name: input.name, slug: input.slug, publisher: input.newPublisher, anchors: input.anchors },
+        payload: { name: input.name, slug: input.slug, publisher: input.newPublisher, anchors: input.anchors, ...(history.length && { previousPublishers: history }) },
         expiresInSeconds: PROJECT_RECORD_SECONDS,
         flags: { readonly: true, permissionlessExtension: false },
       },

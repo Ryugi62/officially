@@ -64,6 +64,9 @@ export function fromSdkEntity(e: Entity): ProjectRecord | EndpointClaim | Incide
   const attrs = (e.attributes ?? {}) as Attrs
   if (s(attrs, "app") !== NAMESPACE) return undefined
   if (!e.key || !e.creator || e.expiresAt === undefined) return undefined
+  const type = s(attrs, "type")
+  // Fail closed: without $createdAt an endpoint claim's 48-hour probation cannot be decided, so it is not trusted at all.
+  if (type === "endpoint" && e.createdAt === undefined) return undefined
   const base = {
     key: e.key,
     creator: e.creator.toLowerCase() as Address,
@@ -84,6 +87,9 @@ export function fromSdkEntity(e: Entity): ProjectRecord | EndpointClaim | Incide
         name: text(p.name),
         publisher: publisher.toLowerCase() as Address,
         revokes: revokes ? (revokes.toLowerCase() as Address) : undefined,
+        ...(Array.isArray(p.previousPublishers) && {
+          previousPublishers: (p.previousPublishers as unknown[]).filter((a): a is string => typeof a === "string" && /^0x[0-9a-fA-F]{40}$/.test(a)).map((a) => a.toLowerCase() as Address),
+        }),
         anchors: Array.isArray(p.anchors) ? (p.anchors as Anchor[]).filter((a) => a && typeof a.ref === "string") : [],
       }
     }
@@ -108,6 +114,7 @@ export function fromSdkEntity(e: Entity): ProjectRecord | EndpointClaim | Incide
         ...base,
         entity: "incident",
         targetHash: targetHash.toLowerCase() as Hex,
+        target: text(p.target),
         severity: Number(attrs.severity?.value ?? 0),
         title: text(p.title),
         advice: text(p.advice),

@@ -1,5 +1,5 @@
 import { normalizeTarget } from "../domain/target"
-import { decodeAuthorizations, type TxRequest, type TypedDataRequest } from "../domain/transaction"
+import { decodeAuthorizations, isUndecoded, type TxRequest, type TypedDataRequest } from "../domain/transaction"
 import type { Pin, Target, Verdict } from "../domain/types"
 import { assessTargets, worst } from "./assess"
 import type { AttestationReader } from "./ports"
@@ -14,6 +14,8 @@ export interface CheckTransactionInput {
 export interface TransactionVerdict {
   verdict: Verdict
   parts: { role: "origin" | "contract" | "token" | "spender" | "operator"; target: string; verdict: Verdict }[]
+  /** the call's arguments were not decoded: only the contract (and origin) were checked — never treat as a clean pass */
+  undecoded: boolean
 }
 
 /** UC-9: every address the request would authorize, plus the origin, checked in ≤ 3 reads; worst wins. */
@@ -23,5 +25,5 @@ export async function checkTransaction(reader: AttestationReader, input: CheckTr
   for (const a of decodeAuthorizations(input.request)) parts.push({ role: a.role, target: normalizeTarget(a.target) })
   const verdicts = await assessTargets(reader, parts.map((p) => p.target), input.pin)
   const out = parts.map((p, i) => ({ role: p.role, target: p.target.value, verdict: verdicts[i]! }))
-  return { verdict: worst(out.map((p) => p.verdict)), parts: out }
+  return { verdict: worst(out.map((p) => p.verdict)), parts: out, undecoded: isUndecoded(input.request) }
 }

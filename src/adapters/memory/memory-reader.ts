@@ -31,6 +31,13 @@ export class MemoryReader implements AttestationReader {
   async findClaimsByCreator(creator: Address) {
     return this.claims.filter((c) => c.creator.toLowerCase() === creator.toLowerCase() && c.expiresAtBlock > this.block)
   }
+  async listIncidentsBy(creators: Address[]) {
+    const ok = this.by(creators)
+    return this.incidents.filter((i) => ok(i.creator) && i.expiresAtBlock > this.block)
+  }
+  async findIncident(key: Hex) {
+    return this.incidents.find((i) => i.key === key && i.expiresAtBlock > this.block)
+  }
   async currentBlock() {
     return this.block
   }

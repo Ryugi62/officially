@@ -47,6 +47,7 @@ export function incident(p: Partial<Incident> & { targetHash: Hex; creator: Addr
     owner: BURN,
     createdAtBlock: 2n,
     expiresAtBlock: 900_000n,
+    target: "https://app.demo-swap.example",
     severity: 3,
     title: "Frontend compromised",
     advice: "Do not sign anything on this domain.",

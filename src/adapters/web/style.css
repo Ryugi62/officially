@@ -58,3 +58,9 @@ details ul { padding-left: 18px; margin: 8px 0 0; }
 .how ol { padding-left: 20px; } .how li { margin: 6px 0; }
 a { color: var(--brand); }
 .banner { border-radius: 16px; padding: 16px; background: var(--no-bg); color: var(--no); font-weight: 700; }
+.pin-main { width: 100%; }
+.pin-form { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
+.pin-form .label { grid-column: 1 / -1; margin-bottom: 0; }
+.btn.small { width: auto; min-height: 48px; margin: 0; padding: 0 20px; font-size: 16px; }
+.incident-row { padding: 12px 0; border-top: 1px solid var(--line); }
+.incident-row:first-child { border-top: 0; }

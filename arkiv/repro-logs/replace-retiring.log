@@ -11,3 +11,4 @@ republished {"txHash":"0xd1aceeb359d14b778b489305af0901191d5207292f1643eaad7a31c
   "renewed": 4,
   "txHash": "0xbb3f4aa2f0fbd891a6bbe50336f620c0d6b72a7b54619480f2570e6b555635e4"
 }
+# note added 2026-10-12T02:40:17Z: in 'delete 0x7315…' above, the hash is the transaction hash of the one batch that deleted the three listed claims

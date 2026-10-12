@@ -5,7 +5,7 @@ import { BURN_ADDRESS, ENDPOINT_LEASE_SECONDS, INCIDENT_SECONDS } from "../../sr
 import { hashTarget, PROJECT_WIDE } from "../../src/domain/hash"
 import { normalizeTarget } from "../../src/domain/target"
 import { SensitiveDataError } from "../../src/domain/sensitive"
-import { claim, PUB_A, PUB_B, record, ROOT } from "../fixtures"
+import { claim, incident, PUB_A, PUB_B, record, ROOT } from "../fixtures"
 import { FakeReader, FakeWriter } from "./fakes"
 
 const attr = (spec: { attributes: { name: string; value: unknown }[] }, name: string) =>
@@ -102,11 +102,11 @@ describe("raiseIncident (UC-4, AC-10)", () => {
 })
 
 describe("keepAlive (UC-5)", () => {
-  it("extends an incident by any wallet with the incident lifetime", async () => {
+  it("extends an incident by any wallet with that incident's lifetime", async () => {
     const w = new FakeWriter(PUB_B)
-    const key = ("0x" + "1".repeat(64)) as `0x${string}`
-    await keepAlive(w, { incidentKey: key })
-    expect(w.batches[0]!.extensions).toEqual([{ key, expiresInSeconds: INCIDENT_SECONDS }])
+    const inc = incident({ targetHash: hashTarget("https://a.example"), creator: PUB_A, severity: 2, expiresAtBlock: 100_010n })
+    await keepAlive(w, { incidentKey: inc.key }, new FakeReader([], [], [inc], 100_000n))
+    expect(w.batches[0]!.extensions).toEqual([{ key: inc.key, expiresInSeconds: INCIDENT_SECONDS }])
   })
 })
 
@@ -169,7 +169,35 @@ describe("incident lifetime by severity", () => {
       expect(w.batches[0]!.creates[0]!.expiresInSeconds).toBe(secs)
     }
     const w = new FakeWriter(PUB_B)
-    await keepAlive(w, { incidentKey: ("0x" + "2".repeat(64)) as `0x${string}`, severity: 3 })
+    const inc = incident({ targetHash: hashTarget("https://a.example"), creator: PUB_A, severity: 3, expiresAtBlock: 100_010n })
+    await keepAlive(w, { incidentKey: inc.key }, new FakeReader([], [], [inc], 100_000n))
     expect(w.batches[0]!.extensions[0]!.expiresInSeconds).toBe(604_800)
+  })
+})
+
+describe("mock-judge fixes (round 1) — writes", () => {
+  it("rotation carries the full publisher history in the new record's payload", async () => {
+    const w = new FakeWriter(ROOT)
+    const reader = new FakeReader([record({ publisher: PUB_B, revokes: PUB_A, previousPublishers: [PUB_A] })])
+    const next = "0xcccc00000000000000000000000000000000cccc" as `0x${string}`
+    await rotatePublisher(w, reader, { newPublisher: next, slug: "demo-swap", name: "Demo", anchors: [] })
+    expect(w.batches[0]!.creates[0]!.payload).toMatchObject({ previousPublishers: [PUB_A, PUB_B] })
+    expect(attr(w.batches[0]!.creates[0]!, "revokes")).toBe(PUB_B)
+  })
+  it("keep-alive reads the incident and never shortens it", async () => {
+    const w = new FakeWriter(PUB_B)
+    const inc = incident({ targetHash: hashTarget("https://a.example"), creator: PUB_A, severity: 3, expiresAtBlock: 100_000n + 300_000n })
+    const reader = new FakeReader([], [], [inc], 100_000n)
+    const r = await keepAlive(w, { incidentKey: inc.key }, reader)
+    expect(w.batches[0]!.extensions[0]!.expiresInSeconds).toBe(604_800) // severity 3 read from the entity
+    expect(r.extended).toBe(true)
+  })
+  it("keep-alive is a no-op when the incident already lives longer than one more lifetime", async () => {
+    const w = new FakeWriter(PUB_B)
+    const inc = incident({ targetHash: hashTarget("https://a.example"), creator: PUB_A, severity: 1, expiresAtBlock: 100_000n + 200_000n })
+    const reader = new FakeReader([], [], [inc], 100_000n)
+    const r = await keepAlive(w, { incidentKey: inc.key }, reader)
+    expect(w.batches).toHaveLength(0)
+    expect(r.extended).toBe(false)
   })
 })

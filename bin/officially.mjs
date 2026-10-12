@@ -25926,7 +25926,7 @@ function trustedKeys(pin, records, now) {
 	const trusted = /* @__PURE__ */ new Set([root, ...own.map((r) => lower(r.publisher))]);
 	return {
 		trusted,
-		revoked: new Set(own.flatMap((r) => r.revokes ? [lower(r.revokes)] : []).filter((a) => !trusted.has(a)))
+		revoked: new Set(own.flatMap((r) => [...r.revokes ? [r.revokes] : [], ...r.previousPublishers ?? []].map(lower)).filter((a) => !trusted.has(a)))
 	};
 }
 function decideVerdict(input) {
@@ -25954,8 +25954,9 @@ function decideVerdict(input) {
 	const { trusted, revoked } = trustedKeys(pin, input.projectRecords, now);
 	const isTrusted = (a) => trusted.has(lower(a));
 	const trustedClaims = claims.filter((c) => isTrusted(c.creator));
-	const trustedIncidents = incidents.filter((i) => isTrusted(i.creator));
-	const unverifiedWarnings = incidents.filter((i) => !isTrusted(i.creator) && i.targetHash === targetHash);
+	const canWarn = (a) => isTrusted(a) || revoked.has(lower(a));
+	const trustedIncidents = incidents.filter((i) => canWarn(i.creator));
+	const unverifiedWarnings = incidents.filter((i) => !canWarn(i.creator) && i.targetHash === targetHash);
 	const untrustedClaimants = claimants.filter((a) => !isTrusted(a));
 	const common = {
 		...base,
@@ -26039,7 +26040,11 @@ var CONFLICT_SAMPLE = 50;
 async function assessTargets(reader, targets, pin) {
 	const hashes = [...new Set(targets.map(hashTarget))];
 	const records = pin ? await reader.findProjectRecords(pin.rootKey) : [];
-	const creators = pin ? [...new Set([pin.rootKey, ...records.flatMap((r) => [r.publisher, ...r.revokes ? [r.revokes] : []])].map((a) => a.toLowerCase()))] : void 0;
+	const creators = pin ? [...new Set([pin.rootKey, ...records.flatMap((r) => [
+		r.publisher,
+		...r.revokes ? [r.revokes] : [],
+		...r.previousPublishers ?? []
+	])].map((a) => a.toLowerCase()))] : void 0;
 	const [att, conflicts] = await Promise.all([reader.findAttestations(hashes, creators), pin ? reader.findClaimants(hashes, CONFLICT_SAMPLE) : Promise.resolve([])]);
 	const byKey = /* @__PURE__ */ new Map();
 	for (const c of [...att.claims, ...conflicts]) byKey.set(c.key, c);
@@ -26145,6 +26150,12 @@ function decodeTypedData(req) {
 	if (out.length === 0) throw new UndecodableRequestError("Typed data names no contract or spender");
 	return out;
 }
+/** True when the request carries calldata whose arguments we do not decode (multicall, Safe, ERC-4337, EIP-7702, …): only the called contract was checked. */
+function isUndecoded(req) {
+	if ("typedData" in req) return false;
+	const data = (req.data ?? "0x").toLowerCase();
+	return data.length > 2 && !(data.slice(0, 10) in SELECTORS);
+}
 //#endregion
 //#region src/application/check-transaction.ts
 /** UC-9: every address the request would authorize, plus the origin, checked in ≤ 3 reads; worst wins. */
@@ -26166,7 +26177,8 @@ async function checkTransaction(reader, input) {
 	}));
 	return {
 		verdict: worst(out.map((p) => p.verdict)),
-		parts: out
+		parts: out,
+		undecoded: isUndecoded(input.request)
 	};
 }
 //#endregion
@@ -26369,15 +26381,29 @@ async function raiseIncident(writer, input) {
 		created: res.created
 	};
 }
-/** UC-5: anyone keeps a warning alive for another 72 hours (permissionless extension). */
-async function keepAlive(writer, input) {
-	return { txHash: (await writer.submit({
-		...emptyBatch(),
-		extensions: [{
-			key: input.incidentKey,
-			expiresInSeconds: incidentSeconds(input.severity ?? 2)
-		}]
-	})).txHash };
+/**
+* UC-5: anyone keeps a warning alive (permissionless extension). Lifetime Extension *sets* the lifetime from now,
+* so the incident is read first: its own severity decides the lifetime, and if that would not move the expiry
+* later, nothing is sent (the node would reject it anyway — see friction S3).
+*/
+async function keepAlive(writer, input, reader) {
+	const [inc, now] = await Promise.all([reader.findIncident(input.incidentKey), reader.currentBlock()]);
+	if (!inc) throw new Error("No live incident with that key (expired, or not an incident)");
+	const seconds = incidentSeconds(inc.severity);
+	if (now + BigInt(seconds / 2) <= inc.expiresAtBlock) return {
+		extended: false,
+		txHash: void 0
+	};
+	return {
+		extended: true,
+		txHash: (await writer.submit({
+			...emptyBatch(),
+			extensions: [{
+				key: input.incidentKey,
+				expiresInSeconds: seconds
+			}]
+		})).txHash
+	};
 }
 /** UC-6: name a new publisher and drop the old record in one transaction — never zero, never two. */
 async function rotatePublisher(writer, reader, input) {
@@ -26388,6 +26414,7 @@ async function rotatePublisher(writer, reader, input) {
 	]);
 	const current = (await reader.findProjectRecords(writer.address)).filter((r) => r.creator.toLowerCase() === writer.address.toLowerCase());
 	const previous = current.find((r) => r.publisher.toLowerCase() !== input.newPublisher.toLowerCase())?.publisher;
+	const history = [...new Set([...current.flatMap((r) => r.previousPublishers ?? []), ...previous ? [previous] : []].map((a) => a.toLowerCase()))];
 	const res = await writer.submit({
 		...emptyBatch(),
 		creates: [{
@@ -26401,7 +26428,8 @@ async function rotatePublisher(writer, reader, input) {
 				name: input.name,
 				slug: input.slug,
 				publisher: input.newPublisher,
-				anchors: input.anchors
+				anchors: input.anchors,
+				...history.length && { previousPublishers: history }
 			},
 			expiresInSeconds: PROJECT_RECORD_SECONDS,
 			flags: {
@@ -26469,6 +26497,7 @@ function fromSdkEntity(e) {
 	const attrs = e.attributes ?? {};
 	if (s(attrs, "app") !== "officially.v1") return void 0;
 	if (!e.key || !e.creator || e.expiresAt === void 0) return void 0;
+	if (s(attrs, "type") === "endpoint" && e.createdAt === void 0) return void 0;
 	const base = {
 		key: e.key,
 		creator: e.creator.toLowerCase(),
@@ -26489,6 +26518,7 @@ function fromSdkEntity(e) {
 				name: text(p.name),
 				publisher: publisher.toLowerCase(),
 				revokes: revokes ? revokes.toLowerCase() : void 0,
+				...Array.isArray(p.previousPublishers) && { previousPublishers: p.previousPublishers.filter((a) => typeof a === "string" && /^0x[0-9a-fA-F]{40}$/.test(a)).map((a) => a.toLowerCase()) },
 				anchors: Array.isArray(p.anchors) ? p.anchors.filter((a) => a && typeof a.ref === "string") : []
 			};
 		}
@@ -26513,6 +26543,7 @@ function fromSdkEntity(e) {
 				...base,
 				entity: "incident",
 				targetHash: targetHash.toLowerCase(),
+				target: text(p.target),
 				severity: Number(attrs.severity?.value ?? 0),
 				title: text(p.title),
 				advice: text(p.advice),
@@ -26553,7 +26584,8 @@ var QUERIES = {
 		where: and(eq("app", str$1(NAMESPACE)), eq("type", str$1("endpoint"))),
 		createdBy: creator
 	}),
-	projects: () => ({ where: and(eq("app", str$1(NAMESPACE)), eq("type", str$1("project"))) })
+	projects: () => ({ where: and(eq("app", str$1(NAMESPACE)), eq("type", str$1("project"))) }),
+	incidentsBy: (creators) => ({ where: and(eq("app", str$1(NAMESPACE)), eq("type", str$1("incident")), or(...creators.map((c) => eq("$creator", addr(c))))) })
 };
 var ArkivReader = class {
 	client;
@@ -26609,6 +26641,15 @@ var ArkivReader = class {
 			records: r.items.filter((x) => x.entity === "project"),
 			cursor: r.cursor
 		};
+	}
+	/** Live incidents created by any of these keys (the "Live incidents" panel on load). */
+	async listIncidentsBy(creators) {
+		return (await this.run(QUERIES.incidentsBy(creators), "incidents")).items.filter((x) => x.entity === "incident");
+	}
+	async findIncident(key) {
+		const e = await withTimeout(this.client.getEntity(key).catch(() => void 0), "incident", this.timeoutMs);
+		const d = e ? fromSdkEntity(e) : void 0;
+		return d?.entity === "incident" ? d : void 0;
 	}
 	async currentBlock() {
 		if (this.last && Date.now() - this.last.at < 4e3) return this.last.block;
@@ -26707,7 +26748,7 @@ Write (keys from environment variables, never from arguments):
   OFFICIALLY_PUBLISHER_KEY  officially publish --slug <slug> --endpoint "<target>|<label>" [--endpoint …] [--chain <id>]
   OFFICIALLY_PUBLISHER_KEY  officially renew
   OFFICIALLY_PUBLISHER_KEY  officially incident (--target <t> | --project-wide) --severity 1|2|3 --title <t> --advice <a> --slug <slug>
-  OFFICIALLY_KEY            officially keep-alive <incidentKey> [--severity 1|2|3]   (any funded wallet)
+  OFFICIALLY_KEY            officially keep-alive <incidentKey>        (any funded wallet; reads the incident, never shortens it)
   OFFICIALLY_ROOT_KEY       officially rotate --publisher <0x> --slug <slug> --name <name> [--anchor github=<url>]
 
 Exit code 0 = OFFICIAL, 1 = anything else, 2 = error.`;
@@ -26774,10 +26815,10 @@ async function main(argv) {
 			});
 			if (json) console.log(JSON.stringify(tv, big, 2));
 			else {
-				console.log(`TRANSACTION ${tv.verdict.status}`);
+				console.log(`TRANSACTION ${tv.verdict.status}${tv.undecoded ? " (calldata not decoded — only the contract was checked)" : ""}`);
 				for (const p of tv.parts) printVerdict(p.verdict, p.role);
 			}
-			return exitCodeFor(tv.verdict.status);
+			return tv.undecoded ? 1 : exitCodeFor(tv.verdict.status);
 		}
 		case "projects": {
 			const r = reader();
@@ -26833,11 +26874,7 @@ async function main(argv) {
 		case "keep-alive": {
 			const key = a.positional[0];
 			if (!key) throw new Error("keep-alive needs an incident key");
-			const sev = opt(a, "severity");
-			console.log(JSON.stringify(await keepAlive(writer("OFFICIALLY_KEY"), {
-				incidentKey: key,
-				...sev && { severity: Number(sev) }
-			}), big, 2));
+			console.log(JSON.stringify(await keepAlive(writer("OFFICIALLY_KEY"), { incidentKey: key }, reader()), big, 2));
 			return 0;
 		}
 		case "rotate": {

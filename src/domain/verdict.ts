@@ -26,7 +26,9 @@ export function trustedKeys(pin: Pin, records: ProjectRecord[], now: bigint): { 
   const root = lower(pin.rootKey)
   const own = records.filter((r) => lower(r.creator) === root && live(r, now))
   const trusted = new Set<string>([root, ...own.map((r) => lower(r.publisher))])
-  const revoked = new Set<string>(own.flatMap((r) => (r.revokes ? [lower(r.revokes)] : [])).filter((a) => !trusted.has(a)))
+  const revoked = new Set<string>(
+    own.flatMap((r) => [...(r.revokes ? [r.revokes] : []), ...(r.previousPublishers ?? [])].map(lower)).filter((a) => !trusted.has(a)),
+  )
   return { trusted, revoked }
 }
 
@@ -60,8 +62,11 @@ export function decideVerdict(input: VerdictInput): Verdict {
   const { trusted, revoked } = trustedKeys(pin, input.projectRecords, now)
   const isTrusted = (a: Address) => trusted.has(lower(a))
   const trustedClaims = claims.filter((c) => isTrusted(c.creator))
-  const trustedIncidents = incidents.filter((i) => isTrusted(i.creator))
-  const unverifiedWarnings = incidents.filter((i) => !isTrusted(i.creator) && i.targetHash === targetHash)
+  // Incidents only restrict, so a key the project once trusted keeps the power to warn after rotation:
+  // a rotation must never be able to silence a warning (a thief who rotates gains nothing by it either).
+  const canWarn = (a: Address) => isTrusted(a) || revoked.has(lower(a))
+  const trustedIncidents = incidents.filter((i) => canWarn(i.creator))
+  const unverifiedWarnings = incidents.filter((i) => !canWarn(i.creator) && i.targetHash === targetHash)
   const untrustedClaimants = claimants.filter((a) => !isTrusted(a))
   const common = { ...base, untrustedClaimants, unverifiedWarnings }
 

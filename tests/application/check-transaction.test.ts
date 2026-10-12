@@ -65,3 +65,17 @@ describe("trusted-first reads (AC-21)", () => {
     expect(v.untrustedClaimants).toContain(EVIL)
   })
 })
+
+describe("undecoded calldata (mock-judge fix)", () => {
+  it("an official contract called with calldata we cannot read is flagged undecoded, so it is never a clean pass", async () => {
+    const multicall = "0xac9650d8" + "00".repeat(64)
+    const r = await checkTransaction(project(), { request: { to: ROUTER, data: multicall, chainId: 1 }, origin: ORIGIN, pin: { rootKey: ROOT } })
+    expect(r.verdict.status).toBe("OFFICIAL")
+    expect(r.undecoded).toBe(true)
+  })
+  it("decoded approvals and plain calls without data are not flagged", async () => {
+    const a = await checkTransaction(project(), { request: { to: TOKEN, data: approve(ROUTER), chainId: 1 }, origin: ORIGIN, pin: { rootKey: ROOT } })
+    const b = await checkTransaction(project(), { request: { to: ROUTER, chainId: 1 }, origin: ORIGIN, pin: { rootKey: ROOT } })
+    expect([a.undecoded, b.undecoded]).toEqual([false, false])
+  })
+})

@@ -32,6 +32,8 @@ export interface RenderCtx {
   projectName: string
   explorer: string
   now: { block: bigint; ms: number }
+  /** set when the verdict comes from the published snapshot instead of a live read: never shown as a clean pass */
+  snapshotBlock?: bigint
 }
 
 export function blocksToText(blocks: bigint): string {
@@ -51,6 +53,10 @@ const addressLink = (ctx: RenderCtx, a: string) => `<a href="${esc(ctx.explorer)
 export function renderVerdict(v: Verdict, ctx: RenderCtx, role?: string): string {
   const c = statusCopy(v.status, ctx.projectName)
   const lines: string[] = []
+  if (ctx.snapshotBlock !== undefined) {
+    if (c.tone === "ok") c.tone = "warn"
+    lines.push(`<p class="meta warn">From the published snapshot at block ${ctx.snapshotBlock}, not a live check — the RPC is rate-limiting this network. Re-check before you sign.</p>`)
+  }
   if (v.status === "INCIDENT" && v.incident) {
     lines.push(`<p class="incident"><strong>${esc(plainText(v.incident.title))}</strong><br>${esc(plainText(v.incident.advice))}</p>`)
     lines.push(`<p class="meta">Severity ${v.incident.severity} · expires in ${blocksToText(v.incident.expiresAtBlock - ctx.now.block)} unless someone keeps it alive · owner ${esc(short(v.incident.owner))} (burned: nobody can delete it)</p>`)

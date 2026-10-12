@@ -5,6 +5,7 @@ import { decideVerdict } from "../../src/domain/verdict"
 import { hashTarget, PROJECT_WIDE } from "../../src/domain/hash"
 import { normalizeTarget } from "../../src/domain/target"
 import { claim, EVIL, incident, PUB_A, PUB_B, record, ROOT } from "../fixtures"
+const ROOT_NEXT = "0xcccc00000000000000000000000000000000cccc" as `0x${string}`
 
 const H = hashTarget(normalizeTarget("https://app.demo-swap.example"))
 const NOW = 100_000n
@@ -221,5 +222,35 @@ describe("probation (AC-17)", () => {
       incidents: [],
     })
     expect(v.status).toBe("OFFICIAL")
+  })
+})
+
+describe("mock-judge fixes (round 1)", () => {
+  it("rotation never silences an incident: one raised by a retired publisher still restricts", () => {
+    const v = decideVerdict({
+      targetHash: H, currentBlock: NOW, pin,
+      projectRecords: [record({ publisher: PUB_B, revokes: PUB_A })],
+      claims: [claim({ targetHash: H, creator: PUB_B })],
+      incidents: [incident({ targetHash: H, creator: PUB_A })],
+    })
+    expect(v.status).toBe("INCIDENT")
+  })
+  it("after two rotations, claims by the first publisher are still REVOKED (history kept in the record)", () => {
+    const v = decideVerdict({
+      targetHash: H, currentBlock: NOW, pin,
+      projectRecords: [record({ publisher: ROOT_NEXT, revokes: PUB_B, previousPublishers: [PUB_A, PUB_B] })],
+      claims: [claim({ targetHash: H, creator: PUB_A })],
+      incidents: [],
+    })
+    expect(v.status).toBe("REVOKED")
+  })
+  it("after two rotations, an incident by the first publisher still restricts", () => {
+    const v = decideVerdict({
+      targetHash: H, currentBlock: NOW, pin,
+      projectRecords: [record({ publisher: ROOT_NEXT, revokes: PUB_B, previousPublishers: [PUB_A, PUB_B] })],
+      claims: [claim({ targetHash: H, creator: ROOT_NEXT })],
+      incidents: [incident({ targetHash: H, creator: PUB_A })],
+    })
+    expect(v.status).toBe("INCIDENT")
   })
 })

@@ -14,6 +14,8 @@ export interface AttestationReader {
   findClaimants(targetHashes: Hex[], limit: number): Promise<EndpointClaim[]>
   /** Live endpoint claims created by this key (for renewals). */
   findClaimsByCreator(creator: Address): Promise<EndpointClaim[]>
+  /** One incident by key (for keep-alive: read its severity and expiry first). */
+  findIncident(key: Hex): Promise<Incident | undefined>
   currentBlock(): Promise<bigint>
 }
 

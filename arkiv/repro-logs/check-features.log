@@ -1,10 +1,10 @@
 OK   Typed attributes vs payload | code src/adapters/arkiv/codec.ts#L20 | chain endpoint 0x99604748… target_hash is bytes32
-OK   Compound query with `$creator` inside `where()` | code src/adapters/arkiv/reader.ts#L36 | chain query string in /arkiv/schema.md (Queries #2); repro log arkiv/repro-logs/sys-attr-predicates.log
-OK   `createdBy()` + cursor pagination | code src/adapters/arkiv/reader.ts#L56 | chain project 0x8cbc354c… created by root
+OK   Compound query with `$creator` inside `where()` | code src/adapters/arkiv/reader.ts#L36 | chain live query: 1 claim(s) back, all created by Demo Swap keys (the forged drainer claim is filtered out by the node)
+OK   `createdBy()` + cursor pagination | code src/adapters/arkiv/reader.ts#L57 | chain project 0x8cbc354c… created by root
 OK   Entity Expiration per type | code src/domain/lifetimes.ts#L9 | chain project expires at block 16228613, endpoint at 1756688
-OK   Lifetime Extension (`extendEntity`) as a lease | code src/application/writes.ts#L53 | chain renew tx 0xbb3f4aa2… (arkiv/repro-logs/replace-retiring.log)
+OK   Lifetime Extension (`extendEntity`) as a lease | code src/application/writes.ts#L53 | chain tx 0xbb3f4aa2… success, 4 entity events
 OK   Creation flags `readonly` + `permissionlessExtension` | code src/application/writes.ts#L80 | chain incident 0x828e576b… flags readonly+permissionlessExtension
 OK   `$creator` vs `$owner`, ownership transfer | code src/application/writes.ts#L84 | chain incident owner 0x000000000000000000000000000000000000dEaD, creator 0x04a16DA7180594eF2dFFcF70431e809432CE438F
-OK   Atomic batch + `predictEntityKeys` salt | code src/application/writes.ts#L66 | chain incident created and burned in one tx 0x18348fbb… (arkiv/repro-logs/seed-run-2.log)
+OK   Atomic batch + `predictEntityKeys` salt | code src/application/writes.ts#L66 | chain tx 0x18348fbb… success, 2 entity events
 OK   WebSocket entity events (`watchEntityEvents`, no `fromBlock`) | code src/adapters/arkiv/feed.ts#L10 | chain arkiv/repro-logs/ws-incident-latency.log
 all claimed features found in code and on chain

@@ -5,6 +5,7 @@ import { join } from "node:path"
 import { createPublicClient } from "@arkiv-network/sdk"
 import { tiramisu } from "@arkiv-network/sdk/chains"
 import { http } from "viem"
+import { DEMO } from "../src/infrastructure/demo"
 
 const REPO = "https://github.com/Ryugi62/officially/blob/main/"
 const EXPLORER = "https://tiramisu.explorer.arkiv.network"
@@ -24,6 +25,12 @@ const incident = snap.incidents[0]
 const endpoint = snap.claims.find((x: { retiring?: boolean; creator: string }) => !x.retiring && x.creator === "0x04a16da7180594ef2dffcf70431e809432ce438f")
 const project = snap.records[0]
 const ent = async (k: string) => c.getEntity(k as `0x${string}`)
+const receipt = async (h: string, minLogs: number) => {
+  const r = await c.getTransactionReceipt({ hash: h as `0x${string}` })
+  return r.status === "success" && r.logs.length >= minLogs ? `tx ${h.slice(0, 10)}… success, ${r.logs.length} entity events` : null
+}
+const logHas = (file: string, re: RegExp) => (re.test(readFileSync(file, "utf8")) ? file : null)
+const firstTx = (file: string, re: RegExp) => readFileSync(file, "utf8").match(re)?.[1] ?? ""
 
 type Feature = { name: string; userSees: string; why: string; code: RegExp; chain: () => Promise<string | null> }
 const FEATURES: Feature[] = [
@@ -32,7 +39,15 @@ const FEATURES: Feature[] = [
     chain: async () => { const e = await ent(endpoint.key); const t = (e.attributes as Record<string, { type?: string }>)?.target_hash?.type; return t === "bytes32" ? `endpoint ${endpoint.key.slice(0, 10)}… target_hash is ${t}` : null } },
   { name: "Compound query with `$creator` inside `where()`", userSees: "A whole transaction (origin + contract + spender) is checked in one read, keeping only the project's keys",
     why: "Spam claims by other keys can never crowd a trusted claim out of the 200-result page", code: /eq\("\$creator", addr\(c\)\)/,
-    chain: async () => "query string in /arkiv/schema.md (Queries #2); repro log arkiv/repro-logs/sys-attr-predicates.log" },
+    chain: async () => {
+      const { ArkivReader } = await import("../src/adapters/arkiv/reader")
+      const { hashTarget } = await import("../src/domain/hash")
+      const trusted = [DEMO.rootKey, DEMO.publisher]
+      const h = [hashTarget(DEMO.origin), hashTarget(`eip155:${DEMO.chainId}:${DEMO.drainer}`)]
+      const r = await new ArkivReader(c).findAttestations(h, trusted)
+      const ok = r.claims.length > 0 && r.claims.every((x) => trusted.some((t) => t.toLowerCase() === x.creator.toLowerCase()))
+      return ok ? `live query: ${r.claims.length} claim(s) back, all created by Demo Swap keys (the forged drainer claim is filtered out by the node)` : null
+    } },
   { name: "`createdBy()` + cursor pagination", userSees: "Project records of the pinned root; a publisher renews all its claims however many there are",
     why: "Authorship filter enforced by the node, not by our code", code: /b = b\.cursor\(cursor\)/,
     chain: async () => (project ? `project ${project.key.slice(0, 10)}… created by root` : null) },
@@ -41,19 +56,19 @@ const FEATURES: Feature[] = [
     chain: async () => { const [a, b] = await Promise.all([ent(project.key), ent(endpoint.key)]); return a.expiresAt !== b.expiresAt ? `project expires at block ${a.expiresAt}, endpoint at ${b.expiresAt}` : null } },
   { name: "Lifetime Extension (`extendEntity`) as a lease", userSees: "Endpoints stay official only while the publisher keeps renewing them (on every deploy)",
     why: "An abandoned domain or retired contract stops being official without anyone remembering to delete it", code: /extensions: claims\.map/,
-    chain: async () => "renew tx 0xbb3f4aa2… (arkiv/repro-logs/replace-retiring.log)" },
+    chain: async () => receipt(firstTx("arkiv/repro-logs/replace-retiring.log", /renew again[\s\S]*?"txHash": "(0x[0-9a-f]{64})"/), 4) },
   { name: "Creation flags `readonly` + `permissionlessExtension`", userSees: "Claims cannot be edited, only replaced; anyone can keep a warning alive",
     why: "A stolen key cannot rewrite history; a dark team cannot silence a warning", code: /permissionlessExtension: true/,
     chain: async () => { const e = await ent(incident.key); return e.creationFlags?.readonly && e.creationFlags?.permissionlessExtension ? `incident ${incident.key.slice(0, 10)}… flags readonly+permissionlessExtension` : null } },
   { name: "`$creator` vs `$owner`, ownership transfer", userSees: "Verdicts name the creating key; incidents show owner 0x…dEaD (\"nobody can delete it\")",
     why: "Trust from the immutable creator; ownership handed to a burn address so even the project cannot retract a warning", code: /newOwner: BURN_ADDRESS/,
     chain: async () => { const e = await ent(incident.key); return /dead$/i.test(e.owner ?? "") ? `incident owner ${e.owner}, creator ${e.creator}` : null } },
-  { name: "Atomic batch + `predictEntityKeys` salt", userSees: "An incident appears already burned; rotation never leaves zero or two publishers",
+  { name: "Atomic batch + `predictEntityKeys` salt", userSees: "An incident appears already burned: there is no block in which a stolen key could delete it",
     why: "Create and ownership change must land in the same block", code: /const \[predicted\] = await writer\.predictKeys\(1\)/,
-    chain: async () => "incident created and burned in one tx 0x18348fbb… (arkiv/repro-logs/seed-run-2.log)" },
+    chain: async () => receipt(firstTx("arkiv/repro-logs/seed-run-2.log", /4 publisher raises an incident[^\n]*"txHash":"(0x[0-9a-f]{64})"/), 2) },
   { name: "WebSocket entity events (`watchEntityEvents`, no `fromBlock`)", userSees: "A new incident flips open checks to INCIDENT without a reload",
     why: "Polling would cost RPC quota every judge shares; push arrived 817 ms after the write", code: /transport: webSocket\(url\)/,
-    chain: async () => "arkiv/repro-logs/ws-incident-latency.log" },
+    chain: async () => logHas("arkiv/repro-logs/ws-incident-latency.log", /feed transport: webSocket[\s\S]*\(matches\)/) },
 ]
 let missing = 0
 const rows: string[] = []

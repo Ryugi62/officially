@@ -31,7 +31,7 @@ Every attribute below is written with a typed constructor (`str`, `bytes32`, `ad
 | `incident` | `type` | `str` | `incident` | every query |
 | `incident` | `project_slug` | `str` | Self-declared — display only | display |
 | `incident` | `target_hash` | `bytes32` | Hash of the affected target, or `0x00…00` for the whole project | the lookup |
-| `incident` | `severity` | `i32` | 1 = caution, 2 = do not sign, 3 = compromised (numeric so it can be range-queried) | `severity >= 2` filters |
+| `incident` | `severity` | `i32` | 1 = caution, 2 = do not sign, 3 = compromised — decides the incident's lifetime (24 h / 72 h / 7 days) | display and lifetime; stored as a number so other clients can range-filter (`severity >= 2`); the app itself reads every severity |
 
 System attributes the app relies on: `$creator` (trust), `$owner` (shows that incidents are burned), `$createdAt` (48-hour probation of new endpoints — computed in code, because the SDK refuses `$createdAt` predicates), `$expiresAt` (lease countdown and re-check time).
 
@@ -39,7 +39,7 @@ System attributes the app relies on: `$creator` (trust), `$owner` (shows that in
 
 | Entity | Payload |
 |---|---|
-| `project` | `{ "name": string, "slug": string, "publisher": address, "anchors": [{ "kind": "github" \| "ens" \| "well-known", "ref": string }] }` |
+| `project` | `{ "name": string, "slug": string, "publisher": address, "anchors": [{ "kind": "github" \| "ens" \| "well-known", "ref": string }], "previousPublishers"?: address[] }` — `previousPublishers` lists every publisher the root has retired, so claims by any of them read as `REVOKED` and their incidents still count after several rotations |
 | `endpoint` | `{ "target": string, "label": string, "retiring"?: true }` — `retiring` marks an endpoint published with a scheduled retirement: its lease ends on that date and renewals skip it |
 | `incident` | `{ "target": string \| "*", "title": string, "advice": string }` — rendered as plain text, links removed |
 
@@ -53,7 +53,23 @@ No payload ever holds a key, a secret or personal data: the writers refuse key-s
 | `0xAbC…` on chain 1, or `eip155:1:0xAbC…` | `eip155:1:0xabc…` (CAIP-10, lowercase) |
 | `@Handle`, `https://x.com/Handle/status/1` | `x:@handle` |
 
-`target_hash = keccak256(utf8(normalized target))`, e.g. `keccak256("https://app.example.org")`.
+`target_hash = keccak256(utf8(normalized target))`.
+
+### Test vectors (checked by `tests/adapters/schema-contract.test.ts`)
+
+| Input | Normalized target | `target_hash` |
+|---|---|---|
+| `HTTPS://App.Demo-Swap.example/swap?x=1` | `https://app.demo-swap.example` | `0x2cf8134854d8475760a07fd045ccbc32f6a9b9f1a79152c9ecdc9dd66495d370` |
+| `https://сurve.fi` (Cyrillic с) | `https://xn--urve-k6d.fi` | `0xc2f3dc828bbce9a678ad70e382e02958d0b09ecad2a1ade68cc5ab3490a06491` |
+| `https://example.org:8443/a` | `https://example.org:8443` | `0xff681854be9b24e79cfda71db2047d5dd721a04237a273a70cf99346a75d0a6f` |
+| `0x5EED00000000000000000000000000000000AAAA` on chain 11155111 | `eip155:11155111:0x5eed00000000000000000000000000000000aaaa` | `0x86abe8ca76ae34f85993644f3ba581172a4db64ec094b85f34be3eb2b0c2e66d` |
+| `https://x.com/DemoSwap_Ex/status/1` | `x:@demoswap_ex` | `0x3a45251157229c3b4636c1e4867fe58ed683e414ae744f54e3f72609a6b2e460` |
+
+A client written only from this file: [`examples/independent-check.mjs`](../examples/independent-check.mjs) (raw JSON-RPC + keccak, nothing imported from `src/`); a test shows it agrees with the app in 8 scenarios.
+
+## Versioning
+
+`app = "officially.v1"` names this contract. Within v1 we only add: new optional payload fields and new entity types; attribute names, types and verdict rules 1–6 do not change. Anything that would change how an existing entity is read (a renamed attribute, a different hash input) ships as `officially.v2`, written alongside v1 until v1 entities expire, so v1 readers keep working.
 
 ## Queries the app runs (exact strings, printed by `npx tsx scripts/print-queries.ts`)
 

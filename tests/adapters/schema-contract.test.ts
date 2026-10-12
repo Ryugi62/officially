@@ -67,3 +67,17 @@ describe("layering (Clean Architecture)", () => {
     }
   })
 })
+
+import { hashTarget } from "../../src/domain/hash"
+import { normalizeTarget } from "../../src/domain/target"
+describe("schema.md test vectors", () => {
+  it("every vector in the table matches the code", () => {
+    const rows = [...md.matchAll(/^\| `([^`]+)`[^|]*\| `([^`]+)` \| `(0x[0-9a-f]{64})` \|$/gm)]
+    expect(rows.length).toBeGreaterThanOrEqual(5)
+    for (const [, input, normalized, hash] of rows) {
+      const t = normalizeTarget(input!, { chainId: 11155111 })
+      expect(t.value).toBe(normalized)
+      expect(hashTarget(t)).toBe(hash)
+    }
+  })
+})

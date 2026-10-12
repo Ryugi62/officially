@@ -29,6 +29,8 @@ export interface ProjectRecord extends AttestationBase {
   name: string
   publisher: Address
   revokes: Address | undefined
+  /** every publisher this root has retired, oldest first (payload) — so REVOKED and incidents survive more than one rotation */
+  previousPublishers?: Address[]
   anchors: Anchor[]
 }
 
@@ -47,6 +49,8 @@ export interface EndpointClaim extends AttestationBase {
 export interface Incident extends AttestationBase {
   entity: "incident"
   targetHash: Hex
+  /** normalized target from the payload, or "*" for the whole project — display only */
+  target: string
   severity: number
   title: string
   advice: string

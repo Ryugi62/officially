@@ -1,0 +1,4 @@
+# 2026-10-12T02:39:28Z STRANGER_KEY=<attacker testnet key> npx tsx scripts/repro/shorten-incident.ts <incident key>
+incident 0x4b3f243a owner 0x000000000000000000000000000000000000dEaD expiresAt 590260n block 461509n stranger 0xcb7074f79E887426Eba3aE9039F0b2ed620a8d6e
+REJECTED: Transaction failed: entity 0x4b3f243a…aadf01 already expires at block 590260, so extending it to 463310 would shorten its life
+expiresAt after 590260n

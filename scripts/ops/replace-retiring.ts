@@ -14,7 +14,7 @@ const pub = createPublicClient({ chain: tiramisu, transport })
 const w = new ArkivWriter(createWalletClient({ chain: tiramisu, transport, account: privateKeyToAccount(process.env.OFFICIALLY_PUBLISHER_KEY as `0x${string}`) }), pub)
 const retiring = (await new ArkivReader(pub).findClaimsByCreator(w.address)).filter((c) => c.retiring)
 console.log("retiring claims found", retiring.map((c) => `${c.key.slice(0, 10)} ${c.target} exp ${c.expiresAtBlock}`))
-if (retiring.length) console.log("delete", (await w.submit({ ...emptyBatch(), deletes: retiring.map((c) => ({ key: c.key })) })).txHash)
+if (retiring.length) console.log("delete tx", (await w.submit({ ...emptyBatch(), deletes: retiring.map((c) => ({ key: c.key })) })).txHash)
 const until = (iso: string) => { const s = Math.floor((Date.parse(iso) - Date.now()) / 1000); return s - (s % 2) }
 const r = await publishEndpoints(w, {
   projectSlug: DEMO.slug,

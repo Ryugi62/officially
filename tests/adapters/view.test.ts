@@ -42,3 +42,18 @@ describe("view", () => {
     expect(hrefs.every((h) => h.startsWith("https://tiramisu.explorer.arkiv.network/"))).toBe(true)
   })
 })
+
+describe("snapshot mode (mock-judge fix)", () => {
+  it("never shows a clean OFFICIAL from the team-hosted snapshot", () => {
+    const v = decideVerdict({
+      targetHash: H, target: "https://app.demo-swap.example", currentBlock: 100_000n, pin: { rootKey: ROOT },
+      projectRecords: [record({ publisher: PUB_A })],
+      claims: [claim({ targetHash: H, creator: PUB_A })],
+      incidents: [],
+    })
+    const html = renderVerdict(v, { projectName: "Demo Swap", explorer: "https://tiramisu.explorer.arkiv.network", now: { block: 100_000n, ms: 0 }, snapshotBlock: 99_000n })
+    expect(html).toContain("tone-warn")
+    expect(html).not.toContain("tone-ok")
+    expect(html).toMatch(/snapshot at block 99000/i)
+  })
+})

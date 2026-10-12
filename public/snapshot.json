@@ -1,7 +1,7 @@
 {
   "note": "Snapshot of the synthetic Demo Swap entities, shown only if the public Arkiv RPC rate-limits the viewer. Regenerate with npx tsx scripts/export-evidence.ts.",
-  "block": "460853",
-  "takenAt": "2026-10-12T02:17:38.627Z",
+  "block": "461538",
+  "takenAt": "2026-10-12T02:40:28.314Z",
   "records": [
     {
       "key": "0x8cbc354cb4e7b90a49d9e63196b9fa0614ce4153429da342afb79b8f7a5fe3aa",
@@ -139,6 +139,7 @@
       "expiresAtBlock": "590308",
       "entity": "incident",
       "targetHash": "0x796b7358526925653ff9c93e5378235cede1cf1fefa3c3625a12dcb53b079b06",
+      "target": "https://demo-swap-airdrop.example",
       "severity": 3,
       "title": "Fake airdrop site",
       "advice": "This site impersonates Demo Swap. We run no airdrop. Do not connect a wallet.",
@@ -152,6 +153,7 @@
       "expiresAtBlock": "590260",
       "entity": "incident",
       "targetHash": "0xab31468cb94c21ab68d4d1d9b72537aec44ef2c9e7e624809864e4e0c7cbdd03",
+      "target": "https://old.demo-swap.example",
       "severity": 2,
       "title": "Retired frontend",
       "advice": "This old frontend is no longer maintained. Do not sign there.",

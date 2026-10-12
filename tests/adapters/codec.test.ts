@@ -84,3 +84,22 @@ describe("fromSdkEntity", () => {
     expect(fromSdkEntity(broken)).toMatchObject({ entity: "endpoint", label: "", target: "" })
   })
 })
+
+describe("fromSdkEntity fails closed", () => {
+  it("drops an endpoint claim without $createdAt (probation cannot be decided)", () => {
+    const e = new Entity({
+      key: ("0x" + "d".repeat(64)) as `0x${string}`, creator: PUB_A, owner: PUB_A, expiresAt: 99n,
+      payload: enc({ target: "https://app.demo-swap.example", label: "App" }),
+      attributes: { app: str(NAMESPACE), type: str("endpoint"), project_slug: str("demo-swap"), kind: str("web"), target_hash: bytes32(H) },
+    })
+    expect(fromSdkEntity(e)).toBeUndefined()
+  })
+  it("reads the publisher history of a project record", () => {
+    const e = new Entity({
+      key: ("0x" + "e".repeat(64)) as `0x${string}`, creator: ROOT, owner: ROOT, createdAt: 1n, expiresAt: 1000n,
+      payload: enc({ name: "Demo", previousPublishers: [PUB_A, "not-an-address"] }),
+      attributes: { app: str(NAMESPACE), type: str("project"), project_slug: str("demo-swap"), publisher: addr(ROOT) },
+    })
+    expect(fromSdkEntity(e)).toMatchObject({ previousPublishers: [PUB_A.toLowerCase()] })
+  })
+})

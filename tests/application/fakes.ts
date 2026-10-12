@@ -35,6 +35,10 @@ export class FakeReader implements AttestationReader {
     this.calls.push("findClaimsByCreator")
     return this.claims.filter((c) => c.creator.toLowerCase() === creator.toLowerCase())
   }
+  async findIncident(key: Hex) {
+    this.calls.push("findIncident")
+    return this.incidents.find((i) => i.key === key)
+  }
   async currentBlock() {
     this.calls.push("currentBlock")
     return this.block

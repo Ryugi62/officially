@@ -79,3 +79,10 @@ function decodeTypedData(req: TypedDataRequest): Authorization[] {
   if (out.length === 0) throw new UndecodableRequestError("Typed data names no contract or spender")
   return out
 }
+
+/** True when the request carries calldata whose arguments we do not decode (multicall, Safe, ERC-4337, EIP-7702, …): only the called contract was checked. */
+export function isUndecoded(req: TxRequest | TypedDataRequest): boolean {
+  if ("typedData" in req) return false
+  const data = (req.data ?? "0x").toLowerCase()
+  return data.length > 2 && !(data.slice(0, 10) in SELECTORS)
+}

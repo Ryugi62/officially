@@ -26,14 +26,16 @@ Officially checks, right before you sign, that the contract or spender your wall
 
 The pattern repeats because the victim does everything right: they type the real domain, see the real-looking page, and sign. **The domain is official; the spender is not.** A domain allowlist passes this attack. Officially checks the spender.
 
-**What changes from day one.** A project runs one command on its next deploy (`officially publish …`) and its official sites, handles and contracts — and any incident it raises — become checkable by anyone, from a web page, a CLI, a wallet or a bot, without trusting the project's DNS, its X account, or us.
+**What changes from day one.**
+- *For the person signing:* they pin the project's root key once, from a source they trusted before any incident (the project's GitHub or ENS name; the app remembers it, and `?root=0x…` links share it). From then on, every approve they paste or click through the guard is checked against what that key published, and a drainer on the real domain shows **FORGED** or **not published**.
+- *For the project:* one command on its next deploy (`officially publish …`), and its official sites, handles and contracts, plus any incident it raises, become checkable by anyone from a web page, a CLI, a wallet or a bot, without trusting the project's DNS, its X account, or us.
 
 ## Per track
 
 | Track | What the rubric asks | Where Officially does it |
 |---|---|---|
 | **Security** | "shows or filters Arkiv entities by their on-chain creator (`$creator`), not by a field anyone can write" | Every verdict comes from `$creator` filtered inside the query ([`reader.ts`](src/adapters/arkiv/reader.ts)); `project_slug`, labels and payloads are display-only. A property test generates random slugs and labels on a claim from another key and never gets `OFFICIAL` ([`verdict.test.ts`](tests/domain/verdict.test.ts), AC-5). The live demo's forged spender is "published" under Demo Swap's exact name and is shown as **FORGED**. |
-| **Censorship Resistance** | "someone outside the team can read and query the data from Arkiv without the team's backend" | There is no backend: the app is static files on GitHub Pages talking to the public RPC. The `curl` in [Reproduce](#reproduce-it) reads everything with no code of ours. Incidents are burned on creation and kept alive by anyone, so neither the team nor an attacker holding its key can silence one. |
+| **Censorship Resistance** | "someone outside the team can read and query the data from Arkiv without the team's backend" | **Who is censored today:** a project under attack loses its own channels. When its DNS points to the attacker, the warning banner on its site is gone too, because the attacker serves the page; the people about to sign are cut off from the one warning that matters. An Officially incident is signed by the project's key, burned on creation, and readable from any Arkiv RPC, so the attacker who holds the domain cannot take it down. There is no backend: the app is static files on GitHub Pages talking to the public RPC. The `curl` in [Reproduce](#reproduce-it) reads everything with no code of ours. Incidents are burned on creation and kept alive by anyone, so neither the team nor an attacker holding its key can silence one. |
 | **Open Source** | "another team can build on the dataset or tool without asking permission, from a documented data contract" | [`/arkiv/schema.md`](arkiv/schema.md) is the contract. [`examples/independent-check.mjs`](examples/independent-check.mjs) is a second client written from it alone: raw JSON-RPC plus keccak, nothing imported from `src/`. A test shows it reaches the same verdict as the app in 8 scenarios ([`independent-client.test.ts`](tests/adapters/independent-client.test.ts)). MIT. |
 
 ## What Officially is not (and what already exists)
@@ -53,11 +55,16 @@ The pattern repeats because the victim does everything right: they type the real
 | **IPFS (+ IPNS / DNSLink)** | Content is addressed by hash, but "the latest list for project X" goes through IPNS or DNSLink — DNS again, the thing being attacked. There is no way to ask "which key published this address?" across projects, and nothing expires. |
 | **A subgraph** | Needs a contract plus an indexer. The indexer is an operator, and expiry, leases and burned warnings would have to be rebuilt in Solidity. |
 | **Our own signed JSON API** | Same single point of failure as the project's DNS, and the reverse lookup "who claims this spender" needs our server. |
+| **EAS attestations** (closest relative: attester ≈ `$creator`, `expirationTime`, revocation) | "Which of these keys attested this exact address, and is it still live?" goes through EAS's indexer/GraphQL, an operator again. Expiry is fixed at creation (no lease renewed on deploy), there is no permissionless keep-alive, and a revocable attestation lets a stolen key retract a warning. |
 
-**The Arkiv property Officially relies on, and what happens without it:**
+**The one question only Arkiv answers natively:** *"which live entities on these target hashes were created by these keys?"* That is a reverse lookup by value, filtered by immutable author and by liveness, answered by the chain's own query engine in one read. Every alternative above needs an indexer someone runs, or loses authorship or expiry.
+
+**The Arkiv properties Officially relies on, and what happens without them:**
 - **Immutable `$creator`, filtered inside the query.** The verdict is one read: entities on these target hashes whose `$creator` is the project's root or publisher key (`$creator = addr(…) OR $creator = addr(…)` in `where()`). Remove it and the product falls apart: anyone with test GLM can write an identical claim, as our simulated attacker did, and only `$creator` tells them apart. The demo shows that claim as **FORGED**.
 - **Entity Expiration as a lease.** An endpoint is official only while the publisher keeps renewing it. Retired endpoints lapse by themselves; three demo endpoints lapse on 20, 21 and 22 October, during judging.
 - **`readonly` + `permissionlessExtension` + ownership transfer to `0x…dEaD` in one atomic batch.** A warning nobody — not even a stolen project key — can edit or delete, and anyone can keep alive.
+
+**Honest caveat:** the public RPC is one operator. Nothing in Officially depends on it: Arkiv watchers replicate the chain and serve the same reads, records are committed to Ethereum for archival (Arkiv "Fundamentals"), and the `curl` below works against any Arkiv RPC. We never run a server ourselves.
 
 **Kept off Arkiv on purpose:** private keys (keychain and environment variables only) · website contents and frontend bundles (large, and not what is attacked) · who checks what (verification runs client-side, nothing is logged) · the user's pinned project list (stays on their device) · raw anchor proofs (GitHub/ENS hold them; the project record only points to them).
 
@@ -74,7 +81,7 @@ Every row is verified in the code **and** on Tiramisu by `npx tsx scripts/check-
 | Lifetime Extension as a lease | Endpoints stay official only while renewed on each deploy | Forgotten endpoints stop being official on their own |
 | `readonly` + `permissionlessExtension` | Claims cannot be edited; anyone can keep a warning alive | A stolen key cannot rewrite history; a dark team cannot silence a warning |
 | `$creator` vs `$owner`, ownership transfer | Verdicts name the creating key; incidents show owner `0x…dEaD` | Trust from the immutable creator; burned ownership means nobody can retract a warning |
-| Atomic batch + `predictEntityKeys` salt | An incident appears already burned; a key rotation never leaves zero or two publishers | Create and transfer land in the same block |
+| Atomic batch + `predictEntityKeys` salt | An incident appears already burned: there is no block in which a stolen key could delete it | Create and transfer land in the same block (key rotation uses the same kind of batch: new record + delete of the old one, unit-tested) |
 | `watchEntityEvents` over WebSocket, no `fromBlock` | A new incident flips open checks to INCIDENT without a reload | Push arrived 817 ms after the write ([log](arkiv/repro-logs/ws-incident-latency.log)); polling would spend the RPC budget every judge shares |
 
 ## The model, in five rules
@@ -136,7 +143,9 @@ Every entity, its creation transaction and its expiry: [`arkiv/evidence.md`](ark
 
 - Throughput: one check is ≤ 3 RPC requests, p50 664 ms / p90 1,598 ms over 10 checks on the public RPC ([log](arkiv/repro-logs/measure-latency.log)). The anonymous RPC budget (≈ 100 requests per IP, reported-issues #17) allows about 30 checks per IP before an access key is needed.
 - Trust starts with pinning the right root key (trust on first use). Officially shows the anchors the project published (`demo/.well-known/officially.json`, GitHub, ENS). Pin **before** an incident, not during one.
-- Not defended: theft of the **root** key; malicious calldata that pays an official router to send funds elsewhere (only authorized addresses are decoded); chains whose wallets do not expose the request before signing.
+- Decoded: `approve`, `increaseAllowance`, `setApprovalForAll`, Permit2 `approve`, EIP-2612 `Permit` typed data. Anything else (multicall, Safe `execTransaction`, ERC-4337 UserOps, EIP-7702 authorizations, `wallet_sendCalls`, Permit2 batches, Seaport) is checked on the called contract only, and the result is flagged **"calldata not decoded"**: never a clean pass in the app, exit code 1 in the CLI.
+- `readonly` stops edits, not deletion: the owner can delete its own endpoint claims. A stolen **publisher** key can therefore make endpoints disappear, which fails safe (everything reads "not published", nothing reads official) until the root rotates. It cannot delete incidents (owned by `0x…dEaD`), cannot shorten them (Lifetime Extension never moves an expiry earlier), and cannot silence them by rotating (incidents by any key the root ever trusted keep restricting).
+- Not defended: theft of the **root** key; malicious calldata that pays an official router to send funds elsewhere; wallets that do not expose the request before signing.
 - Tiramisu is a testnet: entities are demo data and may be reset.
 
 ## Pre-existing work, tools

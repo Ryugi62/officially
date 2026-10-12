@@ -12,7 +12,7 @@ export class CachingReader implements AttestationReader {
   private readonly recordsMs: number
   private readonly attestationsMs: number
   private readonly now: () => number
-  constructor(private readonly inner: AttestationReader, opts: { recordsMs?: number; attestationsMs?: number; now?: () => number } = {}) {
+  constructor(readonly inner: AttestationReader, opts: { recordsMs?: number; attestationsMs?: number; now?: () => number } = {}) {
     this.recordsMs = opts.recordsMs ?? 300_000
     this.attestationsMs = opts.attestationsMs ?? 20_000
     this.now = opts.now ?? Date.now
@@ -38,6 +38,9 @@ export class CachingReader implements AttestationReader {
   }
   findClaimants(targetHashes: Hex[], limit: number) {
     return this.memo(`c:${this.k(targetHashes)}|${limit}`, this.attestationsMs, () => this.inner.findClaimants(targetHashes, limit))
+  }
+  findIncident(key: Hex) {
+    return this.inner.findIncident(key)
   }
   findClaimsByCreator(creator: Address) {
     return this.inner.findClaimsByCreator(creator)

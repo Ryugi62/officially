@@ -41,6 +41,7 @@ export const QUERIES = {
   }),
   claimsBy: (creator: Address) => ({ where: and(eq("app", str(NAMESPACE)), eq("type", str("endpoint"))), createdBy: creator }),
   projects: () => ({ where: and(eq("app", str(NAMESPACE)), eq("type", str("project"))) }),
+  incidentsBy: (creators: Address[]) => ({ where: and(eq("app", str(NAMESPACE)), eq("type", str("incident")), or(...creators.map((c) => eq("$creator", addr(c))))) }),
 }
 
 export class ArkivReader implements AttestationReader {
@@ -93,6 +94,18 @@ export class ArkivReader implements AttestationReader {
   async listProjects(cursor?: string): Promise<{ records: ProjectRecord[]; cursor: string | undefined }> {
     const r = await this.run(QUERIES.projects(), "projects", cursor)
     return { records: r.items.filter((x): x is ProjectRecord => x.entity === "project"), cursor: r.cursor }
+  }
+
+  /** Live incidents created by any of these keys (the "Live incidents" panel on load). */
+  async listIncidentsBy(creators: Address[]): Promise<Incident[]> {
+    const r = await this.run(QUERIES.incidentsBy(creators), "incidents")
+    return r.items.filter((x): x is Incident => x.entity === "incident")
+  }
+
+  async findIncident(key: Hex): Promise<Incident | undefined> {
+    const e = await withTimeout(this.client.getEntity(key).catch(() => undefined), "incident", this.timeoutMs)
+    const d = e ? fromSdkEntity(e) : undefined
+    return d?.entity === "incident" ? d : undefined
   }
 
   async currentBlock(): Promise<bigint> {

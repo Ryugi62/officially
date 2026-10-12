@@ -18,7 +18,7 @@ export async function assessTargets(reader: AttestationReader, targets: Target[]
   const hashes = [...new Set(targets.map(hashTarget))]
   const records = pin ? await reader.findProjectRecords(pin.rootKey) : []
   const creators: Address[] | undefined = pin
-    ? [...new Set([pin.rootKey, ...records.flatMap((r) => [r.publisher, ...(r.revokes ? [r.revokes] : [])])].map((a) => a.toLowerCase() as Address))]
+    ? [...new Set([pin.rootKey, ...records.flatMap((r) => [r.publisher, ...(r.revokes ? [r.revokes] : []), ...(r.previousPublishers ?? [])])].map((a) => a.toLowerCase() as Address))]
     : undefined
   const [att, conflicts] = await Promise.all([
     reader.findAttestations(hashes, creators),
