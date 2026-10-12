@@ -1,0 +1,22 @@
+# 2026-10-12T02:11:06Z keep-alive / renew physical test
+0x4b3f243a creator 0x04a16DA7180594eF2dFFcF70431e809432CE438F owner 0x000000000000000000000000000000000000dEaD expiresAt 590231n flags {"readonly":true,"permissionlessExtension":true,"raw":3} type incident
+block 460658n
+## community wallet keeps the burned incident alive
+{
+  "txHash": "0x7e0faa2cb0e16c1c7b05a95ba51ba4a628af63482ea4f6649d6f907f1841e386"
+}
+exit=0
+0x4b3f243a creator 0x04a16DA7180594eF2dFFcF70431e809432CE438F owner 0x000000000000000000000000000000000000dEaD expiresAt 590260n flags {"readonly":true,"permissionlessExtension":true,"raw":3} type incident
+block 460660n
+## community wallet tries to extend a publisher endpoint (no permissionless flag)
+error: Transaction failed: entity 0x99604748…da49bd is owned by 0x04a16DA7180594eF2dFFcF70431e809432CE438F, not 0x81989FF0bCd1B25b9b751c53a7266904F83B5ec2
+exit=2
+## publisher renews its leases
+{
+  "renewed": 7,
+  "txHash": "0xf230f608ab4fc4f52054286d1d0072be5eab78876c91b45a22e8a5d1cb7251e5"
+}
+exit=0
+0x99604748 creator 0x04a16DA7180594eF2dFFcF70431e809432CE438F owner 0x04a16DA7180594eF2dFFcF70431e809432CE438F expiresAt 1756664n flags {"readonly":true,"permissionlessExtension":false,"raw":1} type endpoint
+0x5e78d174 creator 0x04a16DA7180594eF2dFFcF70431e809432CE438F owner 0x04a16DA7180594eF2dFFcF70431e809432CE438F expiresAt 1756664n flags {"readonly":true,"permissionlessExtension":false,"raw":1} type endpoint
+block 460666n

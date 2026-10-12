@@ -23,6 +23,8 @@ jobs:
       - run: npx tsc --noEmit
       - run: npx vitest run
       - run: npx vite build
+      - name: committed CLI bundle matches the source
+        run: npx vite build --config vite.cli.config.ts && git diff --exit-code bin/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

@@ -26273,6 +26273,9 @@ function attributes(entity, values) {
 async function publishEndpoints(writer, input) {
 	const creates = input.endpoints.map((e) => {
 		const target = normalizeTarget(e.raw, e.chainId === void 0 ? {} : { chainId: e.chainId });
+		const lease = e.retireInSeconds ?? 2592e3;
+		if (lease > 2592e3) throw new RangeError("A retiring endpoint cannot outlive the normal 30-day lease");
+		if (lease <= 0 || lease % 2 !== 0) throw new RangeError("Retirement must be a whole number of 2-second blocks from now");
 		return {
 			entity: "endpoint",
 			attributes: attributes("endpoint", {
@@ -26282,9 +26285,10 @@ async function publishEndpoints(writer, input) {
 			}),
 			payload: {
 				target: target.value,
-				label: e.label
+				label: e.label,
+				...e.retireInSeconds !== void 0 && { retiring: true }
 			},
-			expiresInSeconds: ENDPOINT_LEASE_SECONDS,
+			expiresInSeconds: lease,
 			flags: {
 				readonly: true,
 				permissionlessExtension: false
@@ -26303,7 +26307,7 @@ async function publishEndpoints(writer, input) {
 }
 /** UC-3: renew every live claim of this publisher in one transaction (run it on every deploy). */
 async function renewLeases(writer, reader) {
-	const claims = await reader.findClaimsByCreator(writer.address);
+	const claims = (await reader.findClaimsByCreator(writer.address)).filter((c) => !c.retiring);
 	if (claims.length === 0) return {
 		renewed: 0,
 		txHash: void 0
@@ -26496,7 +26500,8 @@ function fromSdkEntity(e) {
 				target: text(p.target),
 				targetKind: s(attrs, "kind") ?? "web",
 				projectSlug: s(attrs, "project_slug") ?? "",
-				label: text(p.label)
+				label: text(p.label),
+				...p.retiring === true && { retiring: true }
 			};
 		}
 		case "incident": {

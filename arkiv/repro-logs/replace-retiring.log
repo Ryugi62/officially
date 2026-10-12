@@ -1,0 +1,13 @@
+# 2026-10-12T02:11:44Z replace retiring claims renewed by a stale CLI bundle
+retiring claims found [
+  '0xae208d9e eip155:11155111:0x5eed00000000000000000000000000000000a110 exp 1756664',
+  '0x5e78d174 https://v1.demo-swap.example exp 1756664',
+  '0x44f2968e https://beta.demo-swap.example exp 1756664'
+]
+delete 0x7315f9a2251e6caace3c746e8ad63c0b471a0e4d4954e2f42608cb60dfde377b
+republished {"txHash":"0xd1aceeb359d14b778b489305af0901191d5207292f1643eaad7a31c1c98bc5eb","keys":["0x07efc4fc35d682709ae092f7d4ccd997e352b448821af4ff2910479d2858c685","0x8e11b133dd5979eade9b3a474f05348fddc9653ee63bd31b4c3ce7eb07e730fd","0xe9a60bfdb6907b809da5a208720c9d8ce86e8a08bcf41a088586b98376dda73d"]}
+## renew again with the rebuilt CLI
+{
+  "renewed": 4,
+  "txHash": "0xbb3f4aa2f0fbd891a6bbe50336f620c0d6b72a7b54619480f2570e6b555635e4"
+}
