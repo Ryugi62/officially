@@ -88,8 +88,14 @@ export function fromSdkEntity(e: Entity): ProjectRecord | EndpointClaim | Incide
         publisher: publisher.toLowerCase() as Address,
         revokes: revokes ? (revokes.toLowerCase() as Address) : undefined,
         ...(Array.isArray(p.previousPublishers) && {
-          previousPublishers: (p.previousPublishers as unknown[]).filter((a): a is string => typeof a === "string" && /^0x[0-9a-fA-F]{40}$/.test(a)).map((a) => a.toLowerCase() as Address),
+          previousPublishers: (p.previousPublishers as unknown[]).flatMap((x) => {
+            const o = x as { address?: unknown; retiredAtBlock?: unknown }
+            return typeof o?.address === "string" && /^0x[0-9a-fA-F]{40}$/.test(o.address) && /^\d+$/.test(String(o.retiredAtBlock))
+              ? [{ address: o.address.toLowerCase() as Address, retiredAtBlock: BigInt(String(o.retiredAtBlock)) }]
+              : []
+          }),
         }),
+        ...(/^\d+$/.test(String(p.compromisedSinceBlock ?? "")) && { compromisedSinceBlock: BigInt(String(p.compromisedSinceBlock)) }),
         anchors: Array.isArray(p.anchors) ? (p.anchors as Anchor[]).filter((a) => a && typeof a.ref === "string") : [],
       }
     }

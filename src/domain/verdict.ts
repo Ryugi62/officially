@@ -22,13 +22,22 @@ const live = (e: { expiresAtBlock: bigint }, now: bigint) => e.expiresAtBlock > 
  * Trust comes only from who created an entity ($creator). Every writable field (slug, label, kind,
  * payload) is display-only: rules below never read them.
  */
-export function trustedKeys(pin: Pin, records: ProjectRecord[], now: bigint): { trusted: Set<string>; revoked: Set<string> } {
+export function trustedKeys(pin: Pin, records: ProjectRecord[], now: bigint): { trusted: Set<string>; revoked: Map<string, bigint> } {
   const root = lower(pin.rootKey)
   const own = records.filter((r) => lower(r.creator) === root && live(r, now))
   const trusted = new Set<string>([root, ...own.map((r) => lower(r.publisher))])
-  const revoked = new Set<string>(
-    own.flatMap((r) => [...(r.revokes ? [r.revokes] : []), ...(r.previousPublishers ?? [])].map(lower)).filter((a) => !trusted.has(a)),
-  )
+  // retired key → the block its warning power ended (rotation block, or the root's earlier compromise estimate)
+  const revoked = new Map<string, bigint>()
+  const add = (a: string, until: bigint) => {
+    const k = lower(a)
+    if (trusted.has(k)) return
+    const prev = revoked.get(k)
+    revoked.set(k, prev === undefined || until < prev ? until : prev)
+  }
+  for (const r of own) {
+    if (r.revokes) add(r.revokes, r.compromisedSinceBlock !== undefined && r.compromisedSinceBlock < r.createdAtBlock ? r.compromisedSinceBlock : r.createdAtBlock)
+    for (const p of r.previousPublishers ?? []) add(p.address, p.retiredAtBlock)
+  }
   return { trusted, revoked }
 }
 
@@ -62,11 +71,16 @@ export function decideVerdict(input: VerdictInput): Verdict {
   const { trusted, revoked } = trustedKeys(pin, input.projectRecords, now)
   const isTrusted = (a: Address) => trusted.has(lower(a))
   const trustedClaims = claims.filter((c) => isTrusted(c.creator))
-  // Incidents only restrict, so a key the project once trusted keeps the power to warn after rotation:
-  // a rotation must never be able to silence a warning (a thief who rotates gains nothing by it either).
-  const canWarn = (a: Address) => isTrusted(a) || revoked.has(lower(a))
-  const trustedIncidents = incidents.filter((i) => canWarn(i.creator))
-  const unverifiedWarnings = incidents.filter((i) => !canWarn(i.creator) && i.targetHash === targetHash)
+  // Incidents only restrict, so a key the project once trusted keeps the warnings it raised while trusted:
+  // a rotation never silences them. What it raises after its retirement (or after the root's compromise estimate)
+  // does not restrict, so a thief cannot grief the project forever with burned, community-extendable warnings.
+  const canWarn = (i: Incident) => {
+    if (isTrusted(i.creator)) return true
+    const until = revoked.get(lower(i.creator))
+    return until !== undefined && i.createdAtBlock < until
+  }
+  const trustedIncidents = incidents.filter(canWarn)
+  const unverifiedWarnings = incidents.filter((i) => !canWarn(i) && (i.targetHash === targetHash || i.targetHash === PROJECT_WIDE))
   const untrustedClaimants = claimants.filter((a) => !isTrusted(a))
   const common = { ...base, untrustedClaimants, unverifiedWarnings }
 

@@ -1,7 +1,7 @@
 {
   "note": "Snapshot of the synthetic Demo Swap entities, shown only if the public Arkiv RPC rate-limits the viewer. Regenerate with npx tsx scripts/export-evidence.ts.",
-  "block": "461538",
-  "takenAt": "2026-10-12T02:40:28.314Z",
+  "block": "461969",
+  "takenAt": "2026-10-12T02:54:50.393Z",
   "records": [
     {
       "key": "0x8cbc354cb4e7b90a49d9e63196b9fa0614ce4153429da342afb79b8f7a5fe3aa",
@@ -22,6 +22,19 @@
     }
   ],
   "claims": [
+    {
+      "key": "0x335073e263ae2c163acd3c6b3812c01d5be7a26e9514d5f8268d2f6783f82427",
+      "creator": "0x04a16da7180594ef2dffcf70431e809432ce438f",
+      "owner": "0x04a16da7180594ef2dffcf70431e809432ce438f",
+      "createdAtBlock": "461698",
+      "expiresAtBlock": "1757698",
+      "entity": "endpoint",
+      "targetHash": "0x63b068e92b9de4cefdd96f916b5f2b6c60e4118a046a55e666f9de4edf046555",
+      "target": "https://docs.demo-swap.example",
+      "targetKind": "web",
+      "projectSlug": "demo-swap",
+      "label": "Docs"
+    },
     {
       "key": "0xe9a60bfdb6907b809da5a208720c9d8ce86e8a08bcf41a088586b98376dda73d",
       "creator": "0x04a16da7180594ef2dffcf70431e809432ce438f",
@@ -131,6 +144,34 @@
     }
   ],
   "incidents": [
+    {
+      "key": "0xb5e8e07b0c170b80825956dfc91f740fdbe2fefeef690b6935459d1c7cb28d13",
+      "creator": "0x04a16da7180594ef2dffcf70431e809432ce438f",
+      "owner": "0x000000000000000000000000000000000000dead",
+      "createdAtBlock": "461897",
+      "expiresAtBlock": "764297",
+      "entity": "incident",
+      "targetHash": "0x796b7358526925653ff9c93e5378235cede1cf1fefa3c3625a12dcb53b079b06",
+      "target": "https://demo-swap-airdrop.example",
+      "severity": 3,
+      "title": "Fake airdrop site",
+      "advice": "This site impersonates Demo Swap. We run no airdrop. Do not connect a wallet.",
+      "projectSlug": "demo-swap"
+    },
+    {
+      "key": "0xbcc5d6621b04d0af4b6140120d7e110ab41f477d890a686bfb568edcda3aa8d1",
+      "creator": "0x04a16da7180594ef2dffcf70431e809432ce438f",
+      "owner": "0x000000000000000000000000000000000000dead",
+      "createdAtBlock": "461590",
+      "expiresAtBlock": "504790",
+      "entity": "incident",
+      "targetHash": "0x7bc41109b079b9cf204dc118109d794f37872100c7508a13a76651d9607e156c",
+      "target": "https://demo-swap-support.example",
+      "severity": 1,
+      "title": "Fake support desk",
+      "advice": "We never DM you or ask for your seed phrase. This site is not ours.",
+      "projectSlug": "demo-swap"
+    },
     {
       "key": "0x828e576bd44b8157cae37a2fb95d09caa72e0ce1bd5ff9d463287e0f97f51897",
       "creator": "0x04a16da7180594ef2dffcf70431e809432ce438f",

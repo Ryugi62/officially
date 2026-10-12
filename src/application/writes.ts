@@ -104,19 +104,30 @@ export async function keepAlive(writer: AttestationWriter, input: { incidentKey:
 export async function rotatePublisher(
   writer: AttestationWriter,
   reader: AttestationReader,
-  input: { newPublisher: Address; slug: string; name: string; anchors: Anchor[] },
+  input: { newPublisher: Address; slug: string; name: string; anchors: Anchor[]; compromisedSinceBlock?: bigint },
 ) {
   assertNoSensitive([input.slug, input.name, ...input.anchors.map((a) => a.ref)])
   const current = (await reader.findProjectRecords(writer.address)).filter((r) => r.creator.toLowerCase() === writer.address.toLowerCase())
   const previous = current.find((r) => r.publisher.toLowerCase() !== input.newPublisher.toLowerCase())?.publisher
-  const history = [...new Set([...current.flatMap((r) => r.previousPublishers ?? []), ...(previous ? [previous] : [])].map((a) => a.toLowerCase()))] as Address[]
+  // History of retired keys with the block their warning power ended: what the current record revoked ends at that
+  // record's creation (or the root's compromise estimate); the new record's own `revokes` ends at its creation block.
+  const history = new Map<string, bigint>()
+  for (const r of current) {
+    for (const h of r.previousPublishers ?? []) history.set(h.address.toLowerCase(), h.retiredAtBlock)
+    if (r.revokes) history.set(r.revokes.toLowerCase(), r.compromisedSinceBlock !== undefined && r.compromisedSinceBlock < r.createdAtBlock ? r.compromisedSinceBlock : r.createdAtBlock)
+  }
+  const previousPublishers = [...history].map(([address, b]) => ({ address, retiredAtBlock: b.toString() }))
   const res = await writer.submit({
     ...emptyBatch(),
     creates: [
       {
         entity: "project",
         attributes: attributes("project", { project_slug: input.slug, publisher: input.newPublisher, revokes: previous }),
-        payload: { name: input.name, slug: input.slug, publisher: input.newPublisher, anchors: input.anchors, ...(history.length && { previousPublishers: history }) },
+        payload: {
+          name: input.name, slug: input.slug, publisher: input.newPublisher, anchors: input.anchors,
+          ...(previousPublishers.length && { previousPublishers }),
+          ...(input.compromisedSinceBlock !== undefined && { compromisedSinceBlock: input.compromisedSinceBlock.toString() }),
+        },
         expiresInSeconds: PROJECT_RECORD_SECONDS,
         flags: { readonly: true, permissionlessExtension: false },
       },

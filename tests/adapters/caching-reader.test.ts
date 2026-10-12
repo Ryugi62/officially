@@ -62,3 +62,12 @@ describe("CachingReader.invalidateAttestations", () => {
     expect(inner.calls).toEqual(["findProjectRecords", "findAttestations", "findAttestations"])
   })
 })
+
+import { readerFromSnapshot } from "../../src/adapters/memory/memory-reader"
+describe("snapshot reader", () => {
+  it("advances now with the wall clock so a lease that lapsed after the snapshot reads as lapsed", async () => {
+    const snap = { block: "1000", takenAt: "2026-10-12T00:00:00.000Z", records: [], incidents: [], claims: [{ ...claim({ targetHash: H, creator: PUB_A, expiresAtBlock: 1100n }), createdAtBlock: "1", expiresAtBlock: "1100" } as never] }
+    expect((await readerFromSnapshot(snap, Date.parse("2026-10-12T00:01:00.000Z")).findAttestations([H])).claims).toHaveLength(1)   // +30 blocks
+    expect((await readerFromSnapshot(snap, Date.parse("2026-10-12T00:10:00.000Z")).findAttestations([H])).claims).toHaveLength(0)   // +300 blocks
+  })
+})

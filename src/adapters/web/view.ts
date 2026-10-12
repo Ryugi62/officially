@@ -80,3 +80,22 @@ export function renderVerdict(v: Verdict, ctx: RenderCtx, role?: string): string
   <details><summary>Why</summary><ul>${evidence.join("")}</ul></details>
 </article>`
 }
+
+const SEVERITY_ORDER = ["INCIDENT", "FORGED", "REVOKED", "UNLISTED", "UNPINNED", "PROBATION", "OFFICIAL"]
+/** The verdict in words, naming the address role that fails — shown above the counts. */
+export function txHeadline(tv: { verdict: { status: VerdictStatus }; parts: { role: string; verdict: { status: VerdictStatus } }[]; undecoded: boolean }, project: string): { text: string; tone: Tone } {
+  const worst = [...tv.parts].sort((a, b) => SEVERITY_ORDER.indexOf(a.verdict.status) - SEVERITY_ORDER.indexOf(b.verdict.status))[0]
+  const role = worst?.role ?? "address"
+  switch (tv.verdict.status) {
+    case "INCIDENT": return { text: `Do not sign: ${project} raised an incident on the ${role}`, tone: "no" }
+    case "FORGED": return { text: `Do not sign: the ${role} is forged`, tone: "no" }
+    case "REVOKED": return { text: `Do not sign: the ${role} was published by a key ${project} retired`, tone: "no" }
+    case "UNLISTED": return { text: `Do not sign: the ${role} was not published by ${project}`, tone: "no" }
+    case "UNPINNED": return { text: "Pick a project first — nobody vouches for this yet", tone: "idle" }
+    case "PROBATION": return { text: `Wait: the ${role} was published less than 48 h ago`, tone: "warn" }
+    case "OFFICIAL":
+      return tv.undecoded
+        ? { text: "The contract checks out, but what this call authorizes was not decoded — do not treat it as safe", tone: "warn" }
+        : { text: `Safe to sign: every address was published by ${project}`, tone: "ok" }
+  }
+}

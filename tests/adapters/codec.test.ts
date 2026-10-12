@@ -97,9 +97,9 @@ describe("fromSdkEntity fails closed", () => {
   it("reads the publisher history of a project record", () => {
     const e = new Entity({
       key: ("0x" + "e".repeat(64)) as `0x${string}`, creator: ROOT, owner: ROOT, createdAt: 1n, expiresAt: 1000n,
-      payload: enc({ name: "Demo", previousPublishers: [PUB_A, "not-an-address"] }),
+      payload: enc({ name: "Demo", previousPublishers: [{ address: PUB_A, retiredAtBlock: "123" }, { address: "not-an-address", retiredAtBlock: "1" }], compromisedSinceBlock: "99" }),
       attributes: { app: str(NAMESPACE), type: str("project"), project_slug: str("demo-swap"), publisher: addr(ROOT) },
     })
-    expect(fromSdkEntity(e)).toMatchObject({ previousPublishers: [PUB_A.toLowerCase()] })
+    expect(fromSdkEntity(e)).toMatchObject({ previousPublishers: [{ address: PUB_A.toLowerCase(), retiredAtBlock: 123n }], compromisedSinceBlock: 99n })
   })
 })

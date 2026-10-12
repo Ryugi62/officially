@@ -226,19 +226,19 @@ describe("probation (AC-17)", () => {
 })
 
 describe("mock-judge fixes (round 1)", () => {
-  it("rotation never silences an incident: one raised by a retired publisher still restricts", () => {
+  it("rotation never silences an incident: one raised by a retired publisher (before retirement) still restricts", () => {
     const v = decideVerdict({
       targetHash: H, currentBlock: NOW, pin,
-      projectRecords: [record({ publisher: PUB_B, revokes: PUB_A })],
+      projectRecords: [record({ publisher: PUB_B, revokes: PUB_A, createdAtBlock: 90_000n })],
       claims: [claim({ targetHash: H, creator: PUB_B })],
-      incidents: [incident({ targetHash: H, creator: PUB_A })],
+      incidents: [incident({ targetHash: H, creator: PUB_A, createdAtBlock: 80_000n })],
     })
     expect(v.status).toBe("INCIDENT")
   })
   it("after two rotations, claims by the first publisher are still REVOKED (history kept in the record)", () => {
     const v = decideVerdict({
       targetHash: H, currentBlock: NOW, pin,
-      projectRecords: [record({ publisher: ROOT_NEXT, revokes: PUB_B, previousPublishers: [PUB_A, PUB_B] })],
+      projectRecords: [record({ publisher: ROOT_NEXT, revokes: PUB_B, createdAtBlock: 90_000n, previousPublishers: [{ address: PUB_A, retiredAtBlock: 50_000n }] })],
       claims: [claim({ targetHash: H, creator: PUB_A })],
       incidents: [],
     })
@@ -247,10 +247,50 @@ describe("mock-judge fixes (round 1)", () => {
   it("after two rotations, an incident by the first publisher still restricts", () => {
     const v = decideVerdict({
       targetHash: H, currentBlock: NOW, pin,
-      projectRecords: [record({ publisher: ROOT_NEXT, revokes: PUB_B, previousPublishers: [PUB_A, PUB_B] })],
+      projectRecords: [record({ publisher: ROOT_NEXT, revokes: PUB_B, createdAtBlock: 90_000n, previousPublishers: [{ address: PUB_A, retiredAtBlock: 50_000n }] })],
       claims: [claim({ targetHash: H, creator: ROOT_NEXT })],
-      incidents: [incident({ targetHash: H, creator: PUB_A })],
+      incidents: [incident({ targetHash: H, creator: PUB_A, createdAtBlock: 40_000n })],
     })
     expect(v.status).toBe("INCIDENT")
+  })
+})
+
+describe("griefing by a stolen key after rotation (mock-judge round 2)", () => {
+  it("an incident a retired key raised BEFORE its retirement still restricts", () => {
+    const v = decideVerdict({
+      targetHash: H, currentBlock: NOW, pin,
+      projectRecords: [record({ publisher: PUB_B, revokes: PUB_A, createdAtBlock: 90_000n })],
+      claims: [claim({ targetHash: H, creator: PUB_B })],
+      incidents: [incident({ targetHash: PROJECT_WIDE, creator: PUB_A, createdAtBlock: 80_000n })],
+    })
+    expect(v.status).toBe("INCIDENT")
+  })
+  it("an incident a retired key raised AFTER its retirement is shown but does not restrict", () => {
+    const v = decideVerdict({
+      targetHash: H, currentBlock: NOW, pin,
+      projectRecords: [record({ publisher: PUB_B, revokes: PUB_A, createdAtBlock: 90_000n })],
+      claims: [claim({ targetHash: H, creator: PUB_B })],
+      incidents: [incident({ targetHash: H, creator: PUB_A, createdAtBlock: 95_000n })],
+    })
+    expect(v.status).toBe("OFFICIAL")
+    expect(v.unverifiedWarnings).toHaveLength(1)
+  })
+  it("the root can declare the key compromised earlier than the rotation, voiding the thief's warnings", () => {
+    const v = decideVerdict({
+      targetHash: H, currentBlock: NOW, pin,
+      projectRecords: [record({ publisher: PUB_B, revokes: PUB_A, createdAtBlock: 90_000n, compromisedSinceBlock: 70_000n })],
+      claims: [claim({ targetHash: H, creator: PUB_B })],
+      incidents: [incident({ targetHash: PROJECT_WIDE, creator: PUB_A, createdAtBlock: 80_000n })],
+    })
+    expect(v.status).toBe("OFFICIAL")
+  })
+  it("older retired keys use the cut-off recorded in the history", () => {
+    const v = decideVerdict({
+      targetHash: H, currentBlock: NOW, pin,
+      projectRecords: [record({ publisher: ROOT_NEXT, revokes: PUB_B, createdAtBlock: 90_000n, previousPublishers: [{ address: PUB_A, retiredAtBlock: 50_000n }] })],
+      claims: [claim({ targetHash: H, creator: ROOT_NEXT })],
+      incidents: [incident({ targetHash: H, creator: PUB_A, createdAtBlock: 60_000n })],
+    })
+    expect(v.status).toBe("OFFICIAL")
   })
 })

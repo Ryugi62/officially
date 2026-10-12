@@ -1,7 +1,7 @@
 // AC-18 decode the addresses a wallet request would authorize
 import { describe, expect, it } from "vitest"
 import { encodeFunctionData, parseAbi } from "viem"
-import { decodeAuthorizations } from "../../src/domain/transaction"
+import { decodeAuthorizations, isUndecoded } from "../../src/domain/transaction"
 
 const TOKEN = "0x00000000000000000000000000000000000000aa"
 const SPENDER = "0x00000000000000000000000000000000000000bb"
@@ -60,5 +60,20 @@ describe("decodeAuthorizations (AC-18)", () => {
   })
   it("rejects truncated calldata for a known selector instead of guessing", () => {
     expect(() => decodeAuthorizations({ to: TOKEN, data: "0x095ea7b3" + "00".repeat(10), chainId: 1 })).toThrow()
+  })
+})
+
+describe("typed data allowlist (mock-judge round 2)", () => {
+  const base = { domain: { name: "X", version: "1", chainId: 1, verifyingContract: TOKEN } }
+  it("only EIP-2612 Permit and Permit2 PermitSingle are decoded; anything else is undecoded", () => {
+    expect(isUndecoded({ typedData: { ...base, primaryType: "Permit", message: { spender: SPENDER } } })).toBe(false)
+    expect(isUndecoded({ typedData: { ...base, primaryType: "PermitSingle", message: { spender: SPENDER, details: { token: TOKEN } } } })).toBe(false)
+    expect(isUndecoded({ typedData: { ...base, primaryType: "OrderComponents", message: { offerer: SPENDER } } })).toBe(true) // Seaport
+    expect(isUndecoded({ typedData: { ...base, primaryType: "PermitBatch", message: { spender: SPENDER, details: [{ token: TOKEN }] } } })).toBe(true)
+    expect(isUndecoded({ typedData: { ...base, message: { spender: SPENDER } } })).toBe(true) // no primaryType
+  })
+  it("a Seaport order still checks its verifying contract but is never a clean pass", () => {
+    const a = decodeAuthorizations({ typedData: { ...base, primaryType: "OrderComponents", message: { offerer: SPENDER } } })
+    expect(a).toEqual([{ role: "contract", target: `eip155:1:${TOKEN}` }])
   })
 })

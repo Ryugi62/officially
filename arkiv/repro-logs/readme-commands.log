@@ -1,0 +1,40 @@
+# 2026-10-12T02:53:36Z sh scripts/repro/readme-commands.sh
+$ officially check-tx --chain 11155111 --origin https://app.demo-swap.example --to 0x5eed00000000000000000000000000000000aaaa --data 0x095ea7b3000000000000000000000000bad0000000000000000000000000000000000bad00000000000000000000000000000000000000000000000000000000000003e8 --root 0x70E5d4986A251a5173Acf59c86178e144B62864E
+TRANSACTION FORGED
+origin    PROBATION https://app.demo-swap.example
+          Published by 0x04a16da7180594ef2dffcf70431e809432ce438f, a key the pinned root trusts, less than 48 hours ago.
+          New endpoints are held for 48 hours so the team can notice a stolen publisher key before anyone relies on it.
+contract  PROBATION eip155:11155111:0x5eed00000000000000000000000000000000aaaa
+          Published by 0x04a16da7180594ef2dffcf70431e809432ce438f, a key the pinned root trusts, less than 48 hours ago.
+          New endpoints are held for 48 hours so the team can notice a stolen publisher key before anyone relies on it.
+spender   FORGED    eip155:11155111:0xbad0000000000000000000000000000000000bad
+          Claimed by 0xcb7074f79e887426eba3ae9039f0b2ed620a8d6e, which is not a key of the pinned project.
+          Its name and labels are self-declared and do not count.
+exit=1
+
+$ officially check https://app.demo-swap.example --root 0x70E5d4986A251a5173Acf59c86178e144B62864E
+PROBATION https://app.demo-swap.example
+          Published by 0x04a16da7180594ef2dffcf70431e809432ce438f, a key the pinned root trusts, less than 48 hours ago.
+          New endpoints are held for 48 hours so the team can notice a stolen publisher key before anyone relies on it.
+exit=1
+
+$ officially check eip155:11155111:0xbad0000000000000000000000000000000000bad --root 0x70E5d4986A251a5173Acf59c86178e144B62864E
+FORGED    eip155:11155111:0xbad0000000000000000000000000000000000bad
+          Claimed by 0xcb7074f79e887426eba3ae9039f0b2ed620a8d6e, which is not a key of the pinned project.
+          Its name and labels are self-declared and do not count.
+exit=1
+
+$ officially check https://demo-swap-airdrop.example --root 0x70E5d4986A251a5173Acf59c86178e144B62864E
+INCIDENT  https://demo-swap-airdrop.example
+          The project raised an incident on this target.
+          Signed by 0x04a16da7180594ef2dffcf70431e809432ce438f, a key the pinned root trusts.
+exit=1
+
+$ officially check https://v1.demo-swap.example --root 0x70E5d4986A251a5173Acf59c86178e144B62864E
+PROBATION https://v1.demo-swap.example
+          Published by 0x04a16da7180594ef2dffcf70431e809432ce438f, a key the pinned root trusts, less than 48 hours ago.
+          New endpoints are held for 48 hours so the team can notice a stolen publisher key before anyone relies on it.
+exit=1
+
+$ node examples/independent-check.mjs https://demo-swap-airdrop.example 0x70E5d4986A251a5173Acf59c86178e144B62864E
+INCIDENT https://demo-swap-airdrop.example

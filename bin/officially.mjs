@@ -29975,9 +29975,20 @@ function trustedKeys(pin, records, now) {
 	const root = lower(pin.rootKey);
 	const own = records.filter((r) => lower(r.creator) === root && live(r, now));
 	const trusted = /* @__PURE__ */ new Set([root, ...own.map((r) => lower(r.publisher))]);
+	const revoked = /* @__PURE__ */ new Map();
+	const add = (a, until) => {
+		const k = lower(a);
+		if (trusted.has(k)) return;
+		const prev = revoked.get(k);
+		revoked.set(k, prev === void 0 || until < prev ? until : prev);
+	};
+	for (const r of own) {
+		if (r.revokes) add(r.revokes, r.compromisedSinceBlock !== void 0 && r.compromisedSinceBlock < r.createdAtBlock ? r.compromisedSinceBlock : r.createdAtBlock);
+		for (const p of r.previousPublishers ?? []) add(p.address, p.retiredAtBlock);
+	}
 	return {
 		trusted,
-		revoked: new Set(own.flatMap((r) => [...r.revokes ? [r.revokes] : [], ...r.previousPublishers ?? []].map(lower)).filter((a) => !trusted.has(a)))
+		revoked
 	};
 }
 function decideVerdict(input) {
@@ -30005,9 +30016,13 @@ function decideVerdict(input) {
 	const { trusted, revoked } = trustedKeys(pin, input.projectRecords, now);
 	const isTrusted = (a) => trusted.has(lower(a));
 	const trustedClaims = claims.filter((c) => isTrusted(c.creator));
-	const canWarn = (a) => isTrusted(a) || revoked.has(lower(a));
-	const trustedIncidents = incidents.filter((i) => canWarn(i.creator));
-	const unverifiedWarnings = incidents.filter((i) => !canWarn(i.creator) && i.targetHash === targetHash);
+	const canWarn = (i) => {
+		if (isTrusted(i.creator)) return true;
+		const until = revoked.get(lower(i.creator));
+		return until !== void 0 && i.createdAtBlock < until;
+	};
+	const trustedIncidents = incidents.filter(canWarn);
+	const unverifiedWarnings = incidents.filter((i) => !canWarn(i) && (i.targetHash === targetHash || i.targetHash === PROJECT_WIDE));
 	const untrustedClaimants = claimants.filter((a) => !isTrusted(a));
 	const common = {
 		...base,
@@ -30094,7 +30109,7 @@ async function assessTargets(reader, targets, pin) {
 	const creators = pin ? [...new Set([pin.rootKey, ...records.flatMap((r) => [
 		r.publisher,
 		...r.revokes ? [r.revokes] : [],
-		...r.previousPublishers ?? []
+		...(r.previousPublishers ?? []).map((p) => p.address)
 	])].map((a) => a.toLowerCase()))] : void 0;
 	const [att, conflicts] = await Promise.all([reader.findAttestations(hashes, creators), pin ? reader.findClaimants(hashes, CONFLICT_SAMPLE) : Promise.resolve([])]);
 	const byKey = /* @__PURE__ */ new Map();
@@ -30179,8 +30194,10 @@ function decodeAuthorizations(req) {
 	}));
 	return out;
 }
+/** Typed-data types whose authorized addresses we decode. Everything else (Seaport orders, Permit2 batches, …) is only checked on its verifying contract and flagged undecoded. */
+var DECODED_TYPES = /* @__PURE__ */ new Set(["Permit", "PermitSingle"]);
 function decodeTypedData(req) {
-	const { domain, message } = req.typedData;
+	const { domain, message, primaryType } = req.typedData;
 	const chainId = Number(domain?.chainId);
 	if (!Number.isInteger(chainId) || chainId <= 0) throw new UndecodableRequestError("Typed data without a chain id");
 	const out = [];
@@ -30188,6 +30205,10 @@ function decodeTypedData(req) {
 		role: "contract",
 		target: caip(chainId, domain.verifyingContract)
 	});
+	if (!primaryType || !DECODED_TYPES.has(primaryType)) {
+		if (out.length === 0) throw new UndecodableRequestError("Typed data names no verifying contract");
+		return out;
+	}
 	const spender = message?.spender;
 	if (typeof spender === "string" && ADDR.test(spender)) out.push({
 		role: "spender",
@@ -30203,7 +30224,7 @@ function decodeTypedData(req) {
 }
 /** True when the request carries calldata whose arguments we do not decode (multicall, Safe, ERC-4337, EIP-7702, …): only the called contract was checked. */
 function isUndecoded(req) {
-	if ("typedData" in req) return false;
+	if ("typedData" in req) return !req.typedData.primaryType || !DECODED_TYPES.has(req.typedData.primaryType);
 	const data = (req.data ?? "0x").toLowerCase();
 	return data.length > 2 && !(data.slice(0, 10) in SELECTORS);
 }
@@ -30465,7 +30486,15 @@ async function rotatePublisher(writer, reader, input) {
 	]);
 	const current = (await reader.findProjectRecords(writer.address)).filter((r) => r.creator.toLowerCase() === writer.address.toLowerCase());
 	const previous = current.find((r) => r.publisher.toLowerCase() !== input.newPublisher.toLowerCase())?.publisher;
-	const history = [...new Set([...current.flatMap((r) => r.previousPublishers ?? []), ...previous ? [previous] : []].map((a) => a.toLowerCase()))];
+	const history = /* @__PURE__ */ new Map();
+	for (const r of current) {
+		for (const h of r.previousPublishers ?? []) history.set(h.address.toLowerCase(), h.retiredAtBlock);
+		if (r.revokes) history.set(r.revokes.toLowerCase(), r.compromisedSinceBlock !== void 0 && r.compromisedSinceBlock < r.createdAtBlock ? r.compromisedSinceBlock : r.createdAtBlock);
+	}
+	const previousPublishers = [...history].map(([address, b]) => ({
+		address,
+		retiredAtBlock: b.toString()
+	}));
 	const res = await writer.submit({
 		...emptyBatch(),
 		creates: [{
@@ -30480,7 +30509,8 @@ async function rotatePublisher(writer, reader, input) {
 				slug: input.slug,
 				publisher: input.newPublisher,
 				anchors: input.anchors,
-				...history.length && { previousPublishers: history }
+				...previousPublishers.length && { previousPublishers },
+				...input.compromisedSinceBlock !== void 0 && { compromisedSinceBlock: input.compromisedSinceBlock.toString() }
 			},
 			expiresInSeconds: PROJECT_RECORD_SECONDS,
 			flags: {
@@ -30569,7 +30599,14 @@ function fromSdkEntity(e) {
 				name: text(p.name),
 				publisher: publisher.toLowerCase(),
 				revokes: revokes ? revokes.toLowerCase() : void 0,
-				...Array.isArray(p.previousPublishers) && { previousPublishers: p.previousPublishers.filter((a) => typeof a === "string" && /^0x[0-9a-fA-F]{40}$/.test(a)).map((a) => a.toLowerCase()) },
+				...Array.isArray(p.previousPublishers) && { previousPublishers: p.previousPublishers.flatMap((x) => {
+					const o = x;
+					return typeof o?.address === "string" && /^0x[0-9a-fA-F]{40}$/.test(o.address) && /^\d+$/.test(String(o.retiredAtBlock)) ? [{
+						address: o.address.toLowerCase(),
+						retiredAtBlock: BigInt(String(o.retiredAtBlock))
+					}] : [];
+				}) },
+				.../^\d+$/.test(String(p.compromisedSinceBlock ?? "")) && { compromisedSinceBlock: BigInt(String(p.compromisedSinceBlock)) },
 				anchors: Array.isArray(p.anchors) ? p.anchors.filter((a) => a && typeof a.ref === "string") : []
 			};
 		}
@@ -30834,7 +30871,7 @@ Write (keys from environment variables, never from arguments):
   OFFICIALLY_PUBLISHER_KEY  officially renew
   OFFICIALLY_PUBLISHER_KEY  officially incident (--target <t> | --project-wide) --severity 1|2|3 --title <t> --advice <a> --slug <slug>
   OFFICIALLY_KEY            officially keep-alive <incidentKey>        (any funded wallet; reads the incident, never shortens it)
-  OFFICIALLY_ROOT_KEY       officially rotate --publisher <0x> --slug <slug> --name <name> [--anchor github=<url>]
+  OFFICIALLY_ROOT_KEY       officially rotate --publisher <0x> --slug <slug> --name <name> [--anchor github=<url>] [--compromised-since <block>]
 
 Exit code 0 = OFFICIAL, 1 = anything else, 2 = error.`;
 var reader = () => new ArkivReader(createPublicClient({
@@ -30993,7 +31030,8 @@ async function main(argv) {
 				newPublisher: str(a, "publisher"),
 				slug: str(a, "slug"),
 				name: str(a, "name"),
-				anchors
+				anchors,
+				...opt(a, "compromised-since") && { compromisedSinceBlock: BigInt(opt(a, "compromised-since")) }
 			});
 			console.log(JSON.stringify(r, big, 2));
 			return 0;

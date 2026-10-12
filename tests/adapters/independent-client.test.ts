@@ -8,6 +8,7 @@ import { decideVerdict } from "../../src/domain/verdict"
 import { hashTarget, PROJECT_WIDE } from "../../src/domain/hash"
 import { normalizeTarget } from "../../src/domain/target"
 import { claim, EVIL, incident, PUB_A, PUB_B, record, ROOT } from "../fixtures"
+const ROOT_NEXT = "0xcccc00000000000000000000000000000000cccc" as `0x${string}`
 import type { EndpointClaim, Incident, ProjectRecord } from "../../src/domain/types"
 
 const NOW = 200_000n
@@ -15,9 +16,14 @@ const hx = (b: bigint) => "0x" + b.toString(16)
 function toRaw(x: ProjectRecord | EndpointClaim | Incident) {
   const a = (name: string, type: string, value: unknown) => ({ name, type, value })
   const attrs = [a("app", "str", "officially.v1"), a("type", "str", x.entity)]
-  if (x.entity === "project") { attrs.push(a("publisher", "addr", x.publisher)); if (x.revokes) attrs.push(a("revokes", "addr", x.revokes)) }
+  let payload: Record<string, unknown> = {}
+  if (x.entity === "project") {
+    attrs.push(a("publisher", "addr", x.publisher)); if (x.revokes) attrs.push(a("revokes", "addr", x.revokes))
+    payload = { ...(x.previousPublishers && { previousPublishers: x.previousPublishers.map((p) => ({ address: p.address, retiredAtBlock: p.retiredAtBlock.toString() })) }), ...(x.compromisedSinceBlock !== undefined && { compromisedSinceBlock: x.compromisedSinceBlock.toString() }) }
+  }
   else attrs.push(a("target_hash", "bytes32", x.targetHash))
-  return { key: x.key, creator: x.creator, createdAt: hx(x.createdAtBlock), expiresAt: hx(x.expiresAtBlock), attributes: attrs }
+  const hexPayload = "0x" + [...new TextEncoder().encode(JSON.stringify(payload))].map((b) => b.toString(16).padStart(2, "0")).join("")
+  return { key: x.key, creator: x.creator, createdAt: hx(x.createdAtBlock), expiresAt: hx(x.expiresAtBlock), attributes: attrs, payload: hexPayload }
 }
 
 describe("independent client agrees with the app (data contract)", () => {
@@ -39,6 +45,10 @@ describe("independent client agrees with the app (data contract)", () => {
     ["untrusted incident", [record({ publisher: PUB_A }), claim({ targetHash: H, creator: PUB_A }), incident({ targetHash: H, creator: EVIL })]],
     ["revoked", [record({ publisher: PUB_B, revokes: PUB_A }), claim({ targetHash: H, creator: PUB_A })]],
     ["unlisted", [record({ publisher: PUB_A })]],
+    ["incident by a retired key, raised before retirement", [record({ publisher: PUB_B, revokes: PUB_A, createdAtBlock: 90_000n }), claim({ targetHash: H, creator: PUB_B }), incident({ targetHash: H, creator: PUB_A, createdAtBlock: 80_000n })]],
+    ["incident by a retired key, raised after retirement (griefing)", [record({ publisher: PUB_B, revokes: PUB_A, createdAtBlock: 90_000n }), claim({ targetHash: H, creator: PUB_B }), incident({ targetHash: H, creator: PUB_A, createdAtBlock: 95_000n })]],
+    ["root's compromise estimate voids the thief's warning", [record({ publisher: PUB_B, revokes: PUB_A, createdAtBlock: 90_000n, compromisedSinceBlock: 70_000n }), claim({ targetHash: H, creator: PUB_B }), incident({ targetHash: PROJECT_WIDE, creator: PUB_A, createdAtBlock: 80_000n })]],
+    ["two rotations: first publisher's claim is REVOKED", [record({ publisher: ROOT_NEXT, revokes: PUB_B, createdAtBlock: 90_000n, previousPublishers: [{ address: PUB_A, retiredAtBlock: 50_000n }] }), claim({ targetHash: H, creator: PUB_A })]],
     ["lapsed", [record({ publisher: PUB_A }), claim({ targetHash: H, creator: PUB_A, expiresAtBlock: NOW })]],
   ]
   for (const [name, xs] of scenarios) {

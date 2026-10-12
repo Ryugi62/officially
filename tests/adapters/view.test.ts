@@ -57,3 +57,20 @@ describe("snapshot mode (mock-judge fix)", () => {
     expect(html).toMatch(/snapshot at block 99000/i)
   })
 })
+
+import { txHeadline } from "../../src/adapters/web/view"
+describe("transaction headline says the verdict first (mock-judge round 2)", () => {
+  const part = (role: string, status: string) => ({ role, target: "t", verdict: { status } }) as never
+  it("names the failing role", () => {
+    expect(txHeadline({ verdict: { status: "FORGED" }, parts: [part("origin", "OFFICIAL"), part("spender", "FORGED")], undecoded: false } as never, "Demo Swap").text).toBe("Do not sign: the spender is forged")
+    expect(txHeadline({ verdict: { status: "UNLISTED" }, parts: [part("spender", "UNLISTED")], undecoded: false } as never, "Demo Swap").text).toBe("Do not sign: the spender was not published by Demo Swap")
+  })
+  it("never calls an undecoded call safe", () => {
+    const h = txHeadline({ verdict: { status: "OFFICIAL" }, parts: [part("contract", "OFFICIAL")], undecoded: true } as never, "Demo Swap")
+    expect(h.tone).toBe("warn")
+    expect(h.text).toMatch(/not decoded/)
+  })
+  it("clean pass", () => {
+    expect(txHeadline({ verdict: { status: "OFFICIAL" }, parts: [part("spender", "OFFICIAL")], undecoded: false } as never, "Demo Swap").text).toBe("Safe to sign: every address was published by Demo Swap")
+  })
+})

@@ -25,7 +25,7 @@ Write (keys from environment variables, never from arguments):
   OFFICIALLY_PUBLISHER_KEY  officially renew
   OFFICIALLY_PUBLISHER_KEY  officially incident (--target <t> | --project-wide) --severity 1|2|3 --title <t> --advice <a> --slug <slug>
   OFFICIALLY_KEY            officially keep-alive <incidentKey>        (any funded wallet; reads the incident, never shortens it)
-  OFFICIALLY_ROOT_KEY       officially rotate --publisher <0x> --slug <slug> --name <name> [--anchor github=<url>]
+  OFFICIALLY_ROOT_KEY       officially rotate --publisher <0x> --slug <slug> --name <name> [--anchor github=<url>] [--compromised-since <block>]
 
 Exit code 0 = OFFICIAL, 1 = anything else, 2 = error.`
 
@@ -159,6 +159,7 @@ export async function main(argv: string[]): Promise<number> {
         slug: str(a, "slug"),
         name: str(a, "name"),
         anchors,
+        ...(opt(a, "compromised-since") && { compromisedSinceBlock: BigInt(opt(a, "compromised-since")!) }),
       })
       console.log(JSON.stringify(r, big, 2))
       return 0

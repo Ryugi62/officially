@@ -9,7 +9,8 @@ import { ArkivReader, ReadTimeoutError } from "../adapters/arkiv/reader"
 import { CachingReader } from "../adapters/memory/caching-reader"
 import { readerFromSnapshot, type MemoryReader } from "../adapters/memory/memory-reader"
 import { approveCalldata } from "../adapters/web/calldata"
-import { blocksToText, esc, plainText, renderVerdict, statusCopy, type RenderCtx } from "../adapters/web/view"
+import { blocksToText, esc, plainText, renderVerdict, txHeadline, type RenderCtx } from "../adapters/web/view"
+import { guardProvider, OfficiallyBlockedError } from "../adapters/wallet/guard"
 import type { Address, Incident, ProjectRecord, Verdict } from "../domain/types"
 import { DEMO } from "./demo"
 
@@ -17,21 +18,28 @@ const EXPLORER = "https://tiramisu.explorer.arkiv.network"
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 const ADDR = /^0x[0-9a-fA-F]{40}$/
 
-const publicClient = createPublicClient({ chain: tiramisu, transport: http(undefined, { retryCount: 0 }) })
+const params = new URLSearchParams(location.search)
+const RPC = params.get("rpc") ?? undefined // any Arkiv node or watcher you trust more than the public one
+const publicClient = createPublicClient({ chain: tiramisu, transport: http(RPC, { retryCount: 0 }) })
 const arkiv = new ArkivReader(publicClient)
 const live = new CachingReader(arkiv)
 let reader: AttestationReader = live
 let snapshot: { reader: MemoryReader; block: bigint } | undefined
-let pin = { rootKey: readPin() }
+let pin = { rootKey: savedPin() }
+const linkRoot = params.get("root")
+let pendingPin: Address | undefined = linkRoot && ADDR.test(linkRoot) && linkRoot.toLowerCase() !== pin.rootKey.toLowerCase() ? (linkRoot as Address) : undefined
 let records: ProjectRecord[] = []
 let unwatch: (() => void) | undefined
 
-function readPin(): Address {
-  const q = new URLSearchParams(location.search).get("root")
+/** The pin is only ever changed by the user: a `?root=` link is offered, never applied silently (a phishing link could carry an attacker's root). */
+function savedPin(): Address {
   let saved: string | null = null
   try { saved = localStorage.getItem("officially.root") } catch { /* private mode */ }
-  const v = q ?? saved ?? DEMO.rootKey
-  return (ADDR.test(v) ? v : DEMO.rootKey) as Address
+  return (saved && ADDR.test(saved) ? saved : DEMO.rootKey) as Address
+}
+function setPin(v: Address) {
+  pin = { rootKey: v }
+  try { localStorage.setItem("officially.root", v) } catch { /* private mode */ }
 }
 
 function isRateLimit(e: unknown) {
@@ -45,9 +53,9 @@ async function withFallback<T>(run: (r: AttestationReader) => Promise<T>): Promi
     if (snapshot || !isRateLimit(e)) throw e
     const snap = await fetch(new URL("./snapshot.json", document.baseURI)).then((r) => (r.ok ? r.json() : null))
     if (!snap) throw e
-    snapshot = { reader: readerFromSnapshot(snap), block: BigInt(snap.block) }
+    snapshot = { reader: readerFromSnapshot(snap, Date.now()), block: BigInt(snap.block) }
     reader = snapshot.reader
-    $("live").textContent = `The public RPC is rate-limiting this network, so the page shows the snapshot published at block ${snap.block}. Nothing from it counts as a clean pass. Run the same query yourself (see the README).`
+    $("live").textContent = `The RPC is rate-limiting this network, so the page shows the snapshot published at block ${snap.block} (${snap.takenAt}). Leases are aged by the clock, but incidents raised after it are missing, so nothing from it counts as a clean pass. Add ?rpc=<your Arkiv node> to the URL, or run the README query yourself.`
     return run(reader)
   }
 }
@@ -58,40 +66,54 @@ async function ctx(): Promise<RenderCtx> {
 }
 
 function trustedKeys(): Address[] {
-  return [...new Set([pin.rootKey, ...records.flatMap((r) => [r.publisher, ...(r.revokes ? [r.revokes] : []), ...(r.previousPublishers ?? [])])].map((a) => a.toLowerCase()))] as Address[]
+  return [...new Set([pin.rootKey, ...records.flatMap((r) => [r.publisher, ...(r.revokes ? [r.revokes] : []), ...(r.previousPublishers ?? []).map((p) => p.address)])].map((a) => a.toLowerCase()))] as Address[]
 }
+
+const fingerprint = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
 
 async function loadProject() {
   records = await withFallback((r) => r.findProjectRecords(pin.rootKey)).catch(() => [])
   const r = records[0]
   const anchors = r?.anchors.map((a) => `<li>${esc(a.kind)}: <code>${esc(a.ref)}</code></li>`).join("") ?? ""
-  $("pin").innerHTML = `<div class="pin-main"><div class="sub">Checking against the project whose root key is</div>
-    <div class="who">${esc(r?.name ?? "No project record found for this key")}</div>
-    <form id="pin-form" class="pin-form"><label class="label" for="root">Project root key</label><input id="root" value="${esc(pin.rootKey)}" spellcheck="false" autocomplete="off"><button class="btn small" type="submit">Pin</button></form>
+  const offer = pendingPin
+    ? `<div class="offer"><p><strong>This link asks you to check against a different root key: <code>${esc(pendingPin)}</code>.</strong> Only accept it if you got the link from the project before any incident — a phishing link can carry an attacker's key.</p><button class="btn small" id="accept-pin" type="button">Use ${esc(fingerprint(pendingPin))}</button> <button class="btn small ghost" id="keep-pin" type="button">Keep ${esc(fingerprint(pin.rootKey))}</button></div>`
+    : ""
+  $("pin").innerHTML = `<div class="pin-main">${offer}<div class="sub">Checking against root key</div>
+    <div class="who"><code>${esc(fingerprint(pin.rootKey))}</code> <span class="sub">${r ? `self-declared name: ${esc(r.name)}` : "no project record for this key"}</span></div>
+    <form id="pin-form" class="pin-form"><label class="label" for="root">Project root key (the identity — names are self-declared)</label><input id="root" value="${esc(pin.rootKey)}" spellcheck="false" autocomplete="off"><button class="btn small" type="submit">Pin</button></form>
     ${r ? `<details><summary>Where the project states this key</summary><ul>${anchors || "<li>No anchors in the record.</li>"}</ul><p class="sub">Pin a root key from a source you trusted before any incident (its GitHub, its ENS name). A hijacked site cannot change these records: only this key can.</p></details>` : ""}</div>`
   $("pin-form").addEventListener("submit", (e) => {
     e.preventDefault()
     const v = $<HTMLInputElement>("root").value.trim()
     if (!ADDR.test(v)) return
-    pin = { rootKey: v as Address }
-    try { localStorage.setItem("officially.root", v) } catch { /* private mode */ }
+    setPin(v as Address)
+    pendingPin = undefined
     void boot()
   })
+  document.getElementById("accept-pin")?.addEventListener("click", () => { setPin(pendingPin!); pendingPin = undefined; void boot() })
+  document.getElementById("keep-pin")?.addEventListener("click", () => { pendingPin = undefined; void loadProject() })
 }
 
-function renderTx(tv: TransactionVerdict, c: RenderCtx): string {
+function renderTx(tv: TransactionVerdict, c: RenderCtx, gate?: string): string {
   const published = tv.parts.filter((p) => p.verdict.status === "OFFICIAL" || p.verdict.status === "PROBATION").length
   const onHold = tv.parts.filter((p) => p.verdict.status === "PROBATION").length
-  const head = statusCopy(tv.verdict.status, c.projectName)
-  let tone = c.snapshotBlock !== undefined && head.tone === "ok" ? "warn" : head.tone
-  let summary = tv.verdict.status === "OFFICIAL" ? "Safe to sign — every address checks out" : head.headline
-  if (tv.undecoded) { tone = "warn"; summary = "The contract checks out, but this call's arguments were not decoded — only the contract was checked" }
-  return `<div class="summary tone-${tone}"><div class="big">${published} of ${tv.parts.length} published${onHold ? ` · ${onHold} on hold` : ""}</div><div>${esc(summary)}</div></div>` +
+  const head = txHeadline(tv, c.projectName)
+  const tone = c.snapshotBlock !== undefined && head.tone === "ok" ? "warn" : head.tone
+  return `<div class="summary tone-${tone}"><div class="big">${esc(head.text)}</div><div>${published} of ${tv.parts.length} addresses published by ${esc(c.projectName)}'s keys${onHold ? ` · ${onHold} on hold` : ""}${gate ? ` · ${esc(gate)}` : ""}</div></div>` +
     tv.parts.map((p) => renderVerdict(p.verdict, c, p.role)).join("")
 }
 
 const skeleton = '<div class="skeleton"></div><div class="skeleton"></div>'
 const showError = (out: HTMLElement, e: unknown) => { out.innerHTML = `<p class="error">${esc(String((e as Error)?.message ?? e))}</p>` }
+
+/** The demo wallet: stands in for MetaMask. The dApp talks to it only through guardProvider, like a real integration. */
+const demoWallet = {
+  async request({ method }: { method: string }) {
+    if (method === "eth_chainId") return "0x" + DEMO.chainId.toString(16)
+    if (method === "eth_sendTransaction") return "wallet-prompt"
+    throw Object.assign(new Error("unsupported in the demo wallet"), { code: 4200 })
+  },
+}
 
 async function runGuard() {
   const hijacked = $<HTMLInputElement>("hijack").checked
@@ -99,10 +121,19 @@ async function runGuard() {
   $("dapp-spender").textContent = spender
   const out = $("guard")
   out.innerHTML = skeleton
+  let tv: TransactionVerdict | undefined
+  const wallet = guardProvider(demoWallet, {
+    origin: DEMO.origin,
+    check: (req, origin) => withFallback((r) => checkTransaction(r, { request: req, origin, pin })),
+    onVerdict: (v) => { tv = v },
+  })
   try {
-    const tv = await withFallback((r) => checkTransaction(r, { request: { to: DEMO.token, data: approveCalldata(spender), chainId: DEMO.chainId }, origin: DEMO.origin, pin }))
-    out.innerHTML = renderTx(tv, await ctx())
-  } catch (e) { showError(out, e) }
+    await wallet.request({ method: "eth_sendTransaction", params: [{ to: DEMO.token, data: approveCalldata(spender) }] })
+    out.innerHTML = renderTx(tv!, await ctx(), "passed to your wallet to sign")
+  } catch (e) {
+    if (e instanceof OfficiallyBlockedError) out.innerHTML = renderTx(e.verdict, await ctx(), "blocked before your wallet saw it")
+    else showError(out, e)
+  }
 }
 
 async function runCheck(ev?: Event) {
@@ -140,7 +171,7 @@ async function loadIncidents() {
 function startFeed() {
   unwatch?.()
   const feed = new ArkivIncidentFeed(
-    createFeedClient(),
+    createFeedClient(RPC?.replace(/^http/, "ws")),
     async (key) => {
       const e = await publicClient.getEntity(key)
       const type = (e.attributes as Record<string, { value?: unknown }> | undefined)?.type?.value

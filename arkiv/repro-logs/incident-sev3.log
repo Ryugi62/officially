@@ -1,0 +1,10 @@
+# 2026-10-12T02:52:20Z raise a severity-3 incident (lifetime 7 days by the severity rule)
+{
+  "key": "0xb5e8e07b0c170b80825956dfc91f740fdbe2fefeef690b6935459d1c7cb28d13",
+  "txHash": "0xae8d718d0c6cfd6eb230848439de59641429e57803ada3e425bbe200e3b0135d",
+  "created": [
+    "0xb5e8e07b0c170b80825956dfc91f740fdbe2fefeef690b6935459d1c7cb28d13"
+  ]
+}
+0xb5e8e07b creator 0x04a16DA7180594eF2dFFcF70431e809432CE438F owner 0x000000000000000000000000000000000000dEaD expiresAt 764297n flags {"readonly":true,"permissionlessExtension":true,"raw":3} type incident
+block 461900n

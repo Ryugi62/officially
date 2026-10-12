@@ -64,3 +64,7 @@ a { color: var(--brand); }
 .btn.small { width: auto; min-height: 48px; margin: 0; padding: 0 20px; font-size: 16px; }
 .incident-row { padding: 12px 0; border-top: 1px solid var(--line); }
 .incident-row:first-child { border-top: 0; }
+.offer { border-radius: 16px; padding: 14px; background: var(--warn-bg); margin-bottom: 14px; }
+.offer p { margin: 0 0 10px; font-size: 15px; }
+.btn.ghost { background: transparent; color: var(--brand); border: 1px solid var(--brand); }
+.summary .big { font-size: 24px; }

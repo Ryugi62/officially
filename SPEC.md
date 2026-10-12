@@ -1,4 +1,4 @@
-# Officially — SPEC (SDD, v0.2 2026-10-12)
+# Officially — SPEC (SDD, v0.3 2026-10-12)
 
 ## 0. One line
 **Officially** checks, right before you sign, whether the contract or spender your wallet is asked to approve — and the site and handle asking — were published by that Web3 project's own key, are still live, and are not under an incident the project raised. No server, no indexer: the check is one Arkiv query anyone can run.
@@ -69,8 +69,8 @@ A transaction verdict is the worst of its parts, in the order INCIDENT > FORGED 
 | UC-1 CheckTarget | raw target string, pinned root (optional) | Verdict + evidence (entity keys, creators, expiry blocks) | ≤ 3 reads; rules §4 |
 | UC-2 PublishEndpoints | publisher wallet, targets[] | entity keys | one atomic batch; readonly; lease 30 days |
 | UC-3 RenewLeases | publisher wallet | extended keys + new expiry | one batch of `extendEntity` over the publisher's live claims; run on each deploy (activity) |
-| UC-4 RaiseIncident | publisher/root wallet, target or project-wide, severity, advice | incident key | one batch: create (readonly + permissionless extension, 72 h) + ownership → burn address, salt from `predictEntityKeys` |
-| UC-5 KeepAlive | any wallet, incident key | new expiry | `extendEntity` by a non-owner (permissionless extension) |
+| UC-4 RaiseIncident | publisher/root wallet, target or project-wide, severity, advice | incident key | one batch: create (readonly + permissionless extension, lifetime by severity 24 h / 72 h / 7 d) + ownership → burn address, salt from `predictEntityKeys` |
+| UC-5 KeepAlive | any wallet, incident key | new expiry | reads the incident; `extendEntity` by a non-owner with that severity's lifetime, only if it moves the expiry later |
 | UC-6 RotatePublisher | root wallet, new publisher | new record key | one batch: create new Project record + delete the old one (never zero or two authorized records) |
 | UC-7 WatchIncidents | trusted set | live UI update | `watchEntityEvents` over WebSocket, no `fromBlock`; filter `EntityCreated` by creator ∈ T and type `incident` |
 | UC-8 ListProjects | cursor | page of Project records | cursor pagination, ≤ 200/page |
@@ -97,6 +97,10 @@ A transaction verdict is the worst of its parts, in the order INCIDENT > FORGED 
 - AC-19 Curve-2022 shape: official origin + official token contract + unpublished spender → transaction verdict `FORGED` or `UNLISTED`.
 - AC-20 restrict-only incidents: incident text with a URL is rendered without the link (view test).
 - AC-21 trusted-first reads: with a pin, the attestation query filters `$creator` to the trusted keys, so spam claims by other keys can never push a trusted claim out of the 200-result page; conflicts are counted in a separate bounded query.
+- AC-22 typed data: only `Permit` and `PermitSingle` are decoded; any other `primaryType` is `undecoded` and never a clean pass.
+- AC-23 wallet guard: `guardProvider` refuses `eth_sendTransaction` / `eth_signTypedData_v4` that are not a clean pass with EIP-1193 code 4001 before the inner provider is called.
+- AC-24 griefing: incidents by a retired key restrict only if created before its retirement block (or the root's `compromisedSinceBlock`); history survives several rotations.
+- AC-25 pins: a `?root=` link is offered, never applied without the user's click.
 - AC-16 no secrets / personal data: the seed and every writer reject payloads containing a private-key-shaped hex string or an email/phone pattern.
 
 ## 7. Architecture (Clean) — dependencies point inward
@@ -124,4 +128,5 @@ Ports ↔ adapters: `AttestationReader` ↔ `ArkivReader` (public client, HTTP) 
 
 ## 10. Change log
 - v0.1 2026-10-12 first version (idea chosen by blind scoring).
+- v0.3 2026-10-12 mock-judge rounds 1–2: severity lifetimes, keep-alive never shortens, publisher history with cut-offs, typed-data allowlist, EIP-1193 guard, pin confirmation, snapshot never a clean pass.
 - v0.2 2026-10-12 red-team pivot: the headline check moves to the signing path (UC-9), 48 h probation, restrict-only incidents, trusted-first queries; synthetic demo projects only (no real project signed by our key).

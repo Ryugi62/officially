@@ -64,13 +64,20 @@ export function decodeAuthorizations(req: TxRequest | TypedDataRequest): Authori
   return out
 }
 
+/** Typed-data types whose authorized addresses we decode. Everything else (Seaport orders, Permit2 batches, …) is only checked on its verifying contract and flagged undecoded. */
+const DECODED_TYPES = new Set(["Permit", "PermitSingle"])
+
 function decodeTypedData(req: TypedDataRequest): Authorization[] {
-  const { domain, message } = req.typedData
+  const { domain, message, primaryType } = req.typedData
   const chainId = Number(domain?.chainId)
   if (!Number.isInteger(chainId) || chainId <= 0) throw new UndecodableRequestError("Typed data without a chain id")
   const out: Authorization[] = []
   if (domain?.verifyingContract && ADDR.test(domain.verifyingContract)) {
     out.push({ role: "contract", target: caip(chainId, domain.verifyingContract) })
+  }
+  if (!primaryType || !DECODED_TYPES.has(primaryType)) {
+    if (out.length === 0) throw new UndecodableRequestError("Typed data names no verifying contract")
+    return out
   }
   const spender = message?.spender
   if (typeof spender === "string" && ADDR.test(spender)) out.push({ role: "spender", target: caip(chainId, spender) })
@@ -82,7 +89,7 @@ function decodeTypedData(req: TypedDataRequest): Authorization[] {
 
 /** True when the request carries calldata whose arguments we do not decode (multicall, Safe, ERC-4337, EIP-7702, …): only the called contract was checked. */
 export function isUndecoded(req: TxRequest | TypedDataRequest): boolean {
-  if ("typedData" in req) return false
+  if ("typedData" in req) return !req.typedData.primaryType || !DECODED_TYPES.has(req.typedData.primaryType)
   const data = (req.data ?? "0x").toLowerCase()
   return data.length > 2 && !(data.slice(0, 10) in SELECTORS)
 }

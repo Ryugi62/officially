@@ -39,7 +39,7 @@ System attributes the app relies on: `$creator` (trust), `$owner` (shows that in
 
 | Entity | Payload |
 |---|---|
-| `project` | `{ "name": string, "slug": string, "publisher": address, "anchors": [{ "kind": "github" \| "ens" \| "well-known", "ref": string }], "previousPublishers"?: address[] }` — `previousPublishers` lists every publisher the root has retired, so claims by any of them read as `REVOKED` and their incidents still count after several rotations |
+| `project` | `{ "name": string, "slug": string, "publisher": address, "anchors": [{ "kind": "github" \| "ens" \| "well-known", "ref": string }], "previousPublishers"?: [{ "address": address, "retiredAtBlock": "<decimal block>" }], "compromisedSinceBlock"?: "<decimal block>" }` — `previousPublishers` lists every publisher retired before the one in `revokes`, with the block its warning power ended; claims by any of them read as `REVOKED` |
 | `endpoint` | `{ "target": string, "label": string, "retiring"?: true }` — `retiring` marks an endpoint published with a scheduled retirement: its lease ends on that date and renewals skip it |
 | `incident` | `{ "target": string \| "*", "title": string, "advice": string }` — rendered as plain text, links removed |
 
@@ -65,7 +65,7 @@ No payload ever holds a key, a secret or personal data: the writers refuse key-s
 | `0x5EED00000000000000000000000000000000AAAA` on chain 11155111 | `eip155:11155111:0x5eed00000000000000000000000000000000aaaa` | `0x86abe8ca76ae34f85993644f3ba581172a4db64ec094b85f34be3eb2b0c2e66d` |
 | `https://x.com/DemoSwap_Ex/status/1` | `x:@demoswap_ex` | `0x3a45251157229c3b4636c1e4867fe58ed683e414ae744f54e3f72609a6b2e460` |
 
-A client written only from this file: [`examples/independent-check.mjs`](../examples/independent-check.mjs) (raw JSON-RPC + keccak, nothing imported from `src/`); a test shows it agrees with the app in 8 scenarios.
+A client written only from this file: [`examples/independent-check.mjs`](../examples/independent-check.mjs) (raw JSON-RPC + keccak, nothing imported from `src/`); a test shows it agrees with the app in 12 scenarios.
 
 ## Versioning
 
@@ -96,7 +96,7 @@ A check of one link, or of a whole transaction (origin + contract + spender), co
 ## Verdicts (computed in `src/domain/verdict.ts`, rules in order)
 
 1. Trusted keys = the pinned root + the `publisher` of every live `project` record **created by** that root.
-2. A live `incident` on the target (or project-wide) created by a trusted key → `INCIDENT`.
+2. A live `incident` on the target (or project-wide) created by a trusted key — or by a retired publisher **before** its retirement block (`revokes` ends at the record's `$createdAt`, or at `compromisedSinceBlock` if the root set an earlier one; older keys carry `retiredAtBlock` in `previousPublishers`) → `INCIDENT`. Warnings a retired key raises afterwards are shown, never acted on, so a thief cannot grief the project with burned, community-extendable warnings.
 3. A live `endpoint` claim created by a trusted key → `OFFICIAL`, or `PROBATION` if all such claims are younger than 48 hours (86,400 blocks).
 4. A claim created by a publisher the root rotated away from → `REVOKED`.
 5. A claim created by any other key, whatever its `project_slug` says → `FORGED`.

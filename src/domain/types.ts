@@ -29,9 +29,17 @@ export interface ProjectRecord extends AttestationBase {
   name: string
   publisher: Address
   revokes: Address | undefined
-  /** every publisher this root has retired, oldest first (payload) — so REVOKED and incidents survive more than one rotation */
-  previousPublishers?: Address[]
+  /** publishers retired before `revokes`, with the block their warning power ended (payload) — REVOKED and incidents survive several rotations */
+  previousPublishers?: RetiredPublisher[]
+  /** the root's estimate of when `revokes` was stolen: its incidents from this block on are void (payload, optional) */
+  compromisedSinceBlock?: bigint
   anchors: Anchor[]
+}
+
+export interface RetiredPublisher {
+  address: Address
+  /** incidents this key created before this block still restrict; later ones do not (griefing by a thief) */
+  retiredAtBlock: bigint
 }
 
 export interface EndpointClaim extends AttestationBase {

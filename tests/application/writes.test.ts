@@ -176,12 +176,12 @@ describe("incident lifetime by severity", () => {
 })
 
 describe("mock-judge fixes (round 1) — writes", () => {
-  it("rotation carries the full publisher history in the new record's payload", async () => {
+  it("rotation carries the retired-key history (with cut-off blocks) in the new record's payload", async () => {
     const w = new FakeWriter(ROOT)
-    const reader = new FakeReader([record({ publisher: PUB_B, revokes: PUB_A, previousPublishers: [PUB_A] })])
+    const reader = new FakeReader([record({ publisher: PUB_B, revokes: PUB_A, createdAtBlock: 500n })])
     const next = "0xcccc00000000000000000000000000000000cccc" as `0x${string}`
-    await rotatePublisher(w, reader, { newPublisher: next, slug: "demo-swap", name: "Demo", anchors: [] })
-    expect(w.batches[0]!.creates[0]!.payload).toMatchObject({ previousPublishers: [PUB_A, PUB_B] })
+    await rotatePublisher(w, reader, { newPublisher: next, slug: "demo-swap", name: "Demo", anchors: [], compromisedSinceBlock: 700n })
+    expect(w.batches[0]!.creates[0]!.payload).toMatchObject({ previousPublishers: [{ address: PUB_A, retiredAtBlock: "500" }], compromisedSinceBlock: "700" })
     expect(attr(w.batches[0]!.creates[0]!, "revokes")).toBe(PUB_B)
   })
   it("keep-alive reads the incident and never shortens it", async () => {
