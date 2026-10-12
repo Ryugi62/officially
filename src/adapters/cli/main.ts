@@ -7,6 +7,7 @@ import { checkTransaction } from "../../application/check-transaction"
 import { keepAlive, publishEndpoints, raiseIncident, renewLeases, rotatePublisher } from "../../application/writes"
 import type { Address, Anchor, Hex, Verdict } from "../../domain/types"
 import { ArkivReader } from "../arkiv/reader"
+import { createFeedClient, watchKeys } from "../arkiv/feed"
 import { ArkivWriter } from "../arkiv/writer"
 import { exitCodeFor, parseArgs, type Args } from "./args"
 
@@ -16,6 +17,8 @@ Read (no wallet):
   officially check <link|@handle|0xaddress|eip155:chain:0xaddress> --root <projectRootKey> [--chain <id>] [--json]
   officially check-tx --to <0x> --data <0x…> --chain <id> [--origin <url>] --root <projectRootKey> [--json]
   officially projects [--json]
+  officially watch --root <projectRootKey>   live: prints every entity the project's keys create (run it on the team side:
+                                             a new endpoint nobody published = stolen publisher key; rotate within the 48 h hold)
 
 Write (keys from environment variables, never from arguments):
   OFFICIALLY_PUBLISHER_KEY  officially publish --slug <slug> --endpoint "<target>|<label>" [--endpoint …] [--chain <id>]
@@ -79,6 +82,22 @@ export async function main(argv: string[]): Promise<number> {
         for (const p of tv.parts) printVerdict(p.verdict, p.role)
       }
       return tv.undecoded ? 1 : exitCodeFor(tv.verdict.status)
+    }
+    case "watch": {
+      const root = str(a, "root") as Address
+      const r = reader()
+      const recs = await r.findProjectRecords(root)
+      const keys = [root, ...recs.map((x) => x.publisher)]
+      const pub = createPublicClient({ chain: tiramisu, transport: http(process.env.OFFICIALLY_RPC, { retryCount: 0 }) })
+      console.log(`watching ${keys.length} key(s) of root ${root} over a WebSocket — Ctrl-C to stop`)
+      watchKeys(createFeedClient(), async (key) => {
+        const e = await pub.getEntity(key)
+        const type = (e.attributes as Record<string, { value?: unknown }> | undefined)?.type?.value
+        return e.creator ? { type: String(type), creator: e.creator } : undefined
+      }, keys, (e) => console.log(`${new Date().toISOString()} NEW ${e.type.padEnd(8)} ${e.key} by ${e.creator}${e.type === "endpoint" ? "  <- did your team publish this? If not: rotate the publisher now (48 h hold)" : ""}`),
+      (err) => console.error(`feed error: ${err.message}`))
+      await new Promise(() => {})
+      return 0
     }
     case "projects": {
       const r = reader()

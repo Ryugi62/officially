@@ -41,3 +41,27 @@ export class ArkivIncidentFeed {
     })
   }
 }
+
+/**
+ * `officially watch`: the team-side alarm that makes the 48-hour hold useful. Every entity a project key creates
+ * is announced the moment it lands; an endpoint nobody on the team published means the publisher key is stolen —
+ * rotate before the hold ends.
+ */
+export function watchKeys(
+  client: Watchable,
+  lookup: (key: Hex) => Promise<{ type: string; creator: Address } | undefined>,
+  keys: Address[],
+  onCreated: (e: { key: Hex; type: string; creator: Address }) => void,
+  onError: (e: Error) => void = () => {},
+): () => void {
+  const set = new Set(keys.map((a) => a.toLowerCase()))
+  return client.watchEntityEvents({
+    onEntityCreated: (e) => {
+      if (!set.has(e.owner.toLowerCase())) return
+      lookup(e.entityKey)
+        .then((info) => { if (info && set.has(info.creator.toLowerCase())) onCreated({ key: e.entityKey, type: info.type, creator: info.creator }) })
+        .catch((err: unknown) => onError(err instanceof Error ? err : new Error(String(err))))
+    },
+    onError,
+  })
+}

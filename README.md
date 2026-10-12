@@ -91,7 +91,7 @@ Every row is verified in the code **and** on Tiramisu by `npx tsx scripts/check-
 1. A project's **root key** (cold) signs a readonly `project` record naming its **publisher key** (hot).
 2. The publisher signs readonly `endpoint` claims: a normalized target (`https://app.demo-swap.example`, `eip155:11155111:0x…`, `x:@handle`) hashed into `target_hash`, with a 30-day lease renewed on every deploy.
 3. A check keeps only entities **created by** the root or the publisher. Names, slugs and labels anyone can write are displayed and never trusted.
-4. New endpoints are held for **48 hours** (`PROBATION`) so a team can notice a stolen publisher key and rotate before anyone relies on what it published. Rotation is one batch: new record plus deletion of the old one. Claims by the retired key then show as `REVOKED`.
+4. New endpoints are held for **48 hours** (`PROBATION`) so a team can notice a stolen publisher key and rotate before anyone relies on what it published. The team's alarm is `officially watch --root <key>`: every entity its keys create is announced over a WebSocket as it lands ([log](arkiv/repro-logs/watch.log)). Rotation is one batch: new record plus deletion of the old one. Claims by the retired key then show as `REVOKED`.
 5. **Incidents only restrict.** They mark targets unsafe, never add or redirect. Their text renders without links, they are burned on creation, and anyone can keep them alive.
 
 Verdicts: `OFFICIAL` · `PROBATION` · `INCIDENT` · `FORGED` · `REVOKED` · `UNLISTED` · `UNPINNED`. A transaction is as safe as the least safe address it authorizes. Decoded today: `approve`, `increaseAllowance`, `setApprovalForAll`, Permit2 `approve`, and EIP-2612 `Permit` typed data.
