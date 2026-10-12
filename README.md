@@ -84,7 +84,8 @@ Every row is verified in the code **and** on Tiramisu by `npx tsx scripts/check-
 | Lifetime Extension as a lease | Endpoints stay official only while renewed on each deploy | Forgotten endpoints stop being official on their own |
 | `readonly` + `permissionlessExtension` | Claims cannot be edited; anyone can keep a warning alive | A stolen key cannot rewrite history; a dark team cannot silence a warning |
 | `$creator` vs `$owner`, ownership transfer | Verdicts name the creating key; incidents show owner `0x…dEaD` | Trust from the immutable creator; burned ownership means nobody can retract a warning |
-| Atomic batch + `predictEntityKeys` salt | An incident appears already burned: there is no block in which a stolen key could delete it | Create and transfer land in the same block (key rotation uses the same kind of batch: new record + delete of the old one, unit-tested) |
+| Atomic batch + `predictEntityKeys` salt | An incident appears already burned: there is no block in which a stolen key could delete it | Create and transfer land in the same block |
+| Key rotation as one batch (create + delete of a readonly record) | Claims by the retired publisher read `REVOKED`; incidents it raised before retirement still restrict | Never zero or two authorized publishers ([log](arkiv/repro-logs/rotation.log)) |
 | `watchEntityEvents` over WebSocket, no `fromBlock` | A new incident flips open checks to INCIDENT without a reload | Push arrived 817 ms after the write ([log](arkiv/repro-logs/ws-incident-latency.log)); polling would spend the RPC budget every judge shares |
 
 ## The model, in five rules
@@ -92,7 +93,7 @@ Every row is verified in the code **and** on Tiramisu by `npx tsx scripts/check-
 1. A project's **root key** (cold) signs a readonly `project` record naming its **publisher key** (hot).
 2. The publisher signs readonly `endpoint` claims: a normalized target (`https://app.demo-swap.example`, `eip155:11155111:0x…`, `x:@handle`) hashed into `target_hash`, with a 30-day lease renewed on every deploy.
 3. A check keeps only entities **created by** the root or the publisher. Names, slugs and labels anyone can write are displayed and never trusted.
-4. New endpoints are held for **48 hours** (`PROBATION`) so a team can notice a stolen publisher key and rotate before anyone relies on what it published. The team's alarm is `officially watch --root <key>`: every entity its keys create is announced over a WebSocket as it lands ([log](arkiv/repro-logs/watch.log)). Rotation is one batch: new record plus deletion of the old one. Claims by the retired key then show as `REVOKED`.
+4. New endpoints are held for **48 hours** (`PROBATION`) so a team can notice a stolen publisher key and rotate before anyone relies on what it published. The team's alarm is `officially watch --root <key>`: every entity its keys create is announced over a WebSocket as it lands ([log](arkiv/repro-logs/watch.log)). Rotation is one batch: new record plus deletion of the old one. Claims by the retired key then show as `REVOKED`. Done on Tiramisu on 12 Oct: [rotation log](arkiv/repro-logs/rotation.log) (`https://docs.demo-swap.example` was left on the retired key on purpose and reads `REVOKED`).
 5. **Incidents only restrict.** They mark targets unsafe, never add or redirect. Their text renders without links, they are burned on creation, and anyone can keep them alive.
 
 Verdicts: `OFFICIAL` · `PROBATION` · `INCIDENT` · `FORGED` · `REVOKED` · `UNLISTED` · `UNPINNED`. A transaction is as safe as the least safe address it authorizes. Decoded today: `approve`, `increaseAllowance`, `setApprovalForAll`, Permit2 `approve`, and EIP-2612 `Permit` typed data.
@@ -112,6 +113,7 @@ npx github:Ryugi62/officially check https://app.demo-swap.example --root $R     
 npx github:Ryugi62/officially check eip155:11155111:0xbad0000000000000000000000000000000000bad --root $R   # FORGED
 npx github:Ryugi62/officially check https://demo-swap-airdrop.example --root $R                           # INCIDENT (Demo Swap warns: fake airdrop site)
 npx github:Ryugi62/officially check https://v1.demo-swap.example --root $R                                # OFFICIAL until 20 Oct 12:00 UTC, then UNLISTED (lease lapses)
+npx github:Ryugi62/officially check https://docs.demo-swap.example --root $R                              # REVOKED: only the retired publisher key ever signed it
 ```
 The exact queries behind these are printed in [`/arkiv/schema.md`](arkiv/schema.md#queries-the-app-runs-exact-strings-printed-by-npx-tsx-scriptsprint-queriests).
 
@@ -136,7 +138,8 @@ OFFICIALLY_PUBLISHER_KEY=… officially incident --target https://old.yourprojec
 | Address | Role |
 |---|---|
 | [`0x70E5d4986A251a5173Acf59c86178e144B62864E`](https://tiramisu.explorer.arkiv.network/address/0x70E5d4986A251a5173Acf59c86178e144B62864E) | Demo Swap root key: project records |
-| [`0x04a16DA7180594eF2dFFcF70431e809432CE438F`](https://tiramisu.explorer.arkiv.network/address/0x04a16DA7180594eF2dFFcF70431e809432CE438F) | Demo Swap publisher key: endpoint claims, renewals, incidents |
+| [`0x7169173d0D00db282f385FEE8BeCe2D67d10c6f0`](https://tiramisu.explorer.arkiv.network/address/0x7169173d0D00db282f385FEE8BeCe2D67d10c6f0) | Demo Swap publisher key (v2, since the 12 Oct rotation): endpoint claims, renewals, incidents |
+| [`0x04a16DA7180594eF2dFFcF70431e809432CE438F`](https://tiramisu.explorer.arkiv.network/address/0x04a16DA7180594eF2dFFcF70431e809432CE438F) | Demo Swap's first publisher key, retired by the root on 12 Oct ([rotation log](arkiv/repro-logs/rotation.log)): its claims read REVOKED, the incidents it raised before retirement still count |
 | [`0xcb7074f79E887426Eba3aE9039F0b2ed620a8d6e`](https://tiramisu.explorer.arkiv.network/address/0xcb7074f79E887426Eba3aE9039F0b2ed620a8d6e) | Simulated attacker: a forged claim under Demo Swap's name |
 | [`0x81989FF0bCd1B25b9b751c53a7266904F83B5ec2`](https://tiramisu.explorer.arkiv.network/address/0x81989FF0bCd1B25b9b751c53a7266904F83B5ec2) | Community wallet: keeps an incident alive (permissionless extension) |
 

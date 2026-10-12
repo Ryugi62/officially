@@ -1,0 +1,6 @@
+# 2026-10-12T02:58:33Z fund publisher-v2 with 2 test GLM from the retiring publisher (plain transfer)
+tx 0x3036d89dad953be879c1700ec0f78b9c3afb77c0301d7e948588fc6a1d531ab0 status success
+recipient balance 0 -> 0.01
+# 2026-10-12T02:58:54Z AMOUNT=1
+tx 0x4ff6cd1c602b51df83f0a53593576dba14aac9d5fde3656d114bfca48aeaea10 status success
+recipient balance 0.01 -> 1.01

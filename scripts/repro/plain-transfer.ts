@@ -8,7 +8,7 @@ const pub = createPublicClient({ chain: tiramisu, transport: http(undefined, { r
 const w = createWalletClient({ chain: tiramisu, transport: http(undefined, { retryCount: 0 }), account })
 const before = await pub.getBalance({ address: to })
 try {
-  const hash = await w.sendTransaction({ to, value: parseEther("0.01") })
+  const hash = await w.sendTransaction({ to, value: parseEther(process.env.AMOUNT ?? "0.01") })
   const r = await pub.waitForTransactionReceipt({ hash })
   console.log("tx", hash, "status", r.status)
 } catch (e) {

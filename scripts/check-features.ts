@@ -22,7 +22,7 @@ function find(re: RegExp): string | null {
 }
 const snap = JSON.parse(readFileSync("public/snapshot.json", "utf8"))
 const incident = snap.incidents[0]
-const endpoint = snap.claims.find((x: { retiring?: boolean; creator: string }) => !x.retiring && x.creator === "0x04a16da7180594ef2dffcf70431e809432ce438f")
+const endpoint = snap.claims.find((x: { retiring?: boolean; creator: string }) => !x.retiring && x.creator === DEMO.publisher.toLowerCase())
 const project = snap.records[0]
 const ent = async (k: string) => c.getEntity(k as `0x${string}`)
 const receipt = async (h: string, minLogs: number) => {
@@ -70,6 +70,13 @@ const FEATURES: Feature[] = [
   { name: "Atomic batch + `predictEntityKeys` salt", userSees: "An incident appears already burned: there is no block in which a stolen key could delete it",
     why: "Create and ownership change must land in the same block", code: /const \[predicted\] = await writer\.predictKeys\(1\)/,
     chain: async () => receipt(firstTx("arkiv/repro-logs/seed-run-2.log", /4 publisher raises an incident[^\n]*"txHash":"(0x[0-9a-f]{64})"/), 2) },
+  { name: "Key rotation: create + delete of a readonly record in one batch", userSees: "Claims by the retired publisher read REVOKED; its earlier incidents still restrict",
+    why: "There is never a moment with zero or two authorized publishers", code: /deletes: current\.map\(\(r\) => \(\{ key: r\.key \}\)\)/,
+    chain: async () => {
+      const r = await receipt(firstTx("arkiv/repro-logs/rotation.log", /"txHash": "(0x[0-9a-f]{64})"/), 2)
+      const rec = snap.records[0]
+      return r && rec && rec.revokes && rec.publisher === DEMO.publisher.toLowerCase() ? `${r}; live record names ${rec.publisher.slice(0, 10)}… and revokes ${rec.revokes.slice(0, 10)}…` : null
+    } },
   { name: "WebSocket entity events (`watchEntityEvents`, no `fromBlock`)", userSees: "A new incident flips open checks to INCIDENT without a reload",
     why: "Polling would cost RPC quota every judge shares; push arrived 817 ms after the write", code: /transport: webSocket\(url\)/,
     chain: async () => logHas("arkiv/repro-logs/ws-incident-latency.log", /feed transport: webSocket[\s\S]*\(matches\)/) },

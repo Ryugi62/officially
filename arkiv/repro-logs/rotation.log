@@ -1,0 +1,65 @@
+# 2026-10-12T02:59:31Z key rotation on Tiramisu: publisher 0x04a1…438F -> publisher-v2 0x7169…c6f0
+## before
+PROBATION https://app.demo-swap.example
+          Published by 0x04a16da7180594ef2dffcf70431e809432ce438f, a key the pinned root trusts, less than 48 hours ago.
+PROBATION https://docs.demo-swap.example
+          Published by 0x04a16da7180594ef2dffcf70431e809432ce438f, a key the pinned root trusts, less than 48 hours ago.
+## root rotates (one batch: create new project record + delete the old one)
+{
+  "txHash": "0x34ac5dc20adf43f81048c2a558c5aa455f2087b40b20e87c9abd8beb9d286df4",
+  "key": "0x638422a2f085ecfa06d7857143fb357f282ce56a32b9ef65bc9464b71a43cb23"
+}
+## right after rotation (old publisher's claims, nothing re-published yet)
+REVOKED   https://app.demo-swap.example
+          Published by 0x04a16da7180594ef2dffcf70431e809432ce438f, a key the project's root has rotated away from.
+error: HTTP request failed.
+
+Status: 429
+URL: https://rpc.tiramisu.db-chain.testnet.arkiv.network/
+Request body: {"method":"arkiv_query","params":["app = str('officially.v1') AND type = str('project') AND $creator = addr(0x70E5d4986A251a5173Acf59c86178e144B62864E)",{"select":{"key":true,"owner":true,"creator":true,"createdAt":true,"updatedAt":true,"expiresAt":true,"creationFlags":true,"contentType":true,"payload":true,"attributeSchema":true,"attributes":true},"limit":"0xc8"}]}
+
+Details: "ANON_COST_LIMITED"
+Version: viem@2.57.4
+error: HTTP request failed.
+
+Status: 429
+URL: https://rpc.tiramisu.db-chain.testnet.arkiv.network/
+Request body: {"method":"arkiv_query","params":["app = str('officially.v1') AND (type = str('endpoint') AND target_hash = bytes32(0x796b7358526925653ff9c93e5378235cede1cf1fefa3c3625a12dcb53b079b06) OR type = str('incident') AND (target_hash = bytes32(0x796b7358526925653ff9c93e5378235cede1cf1fefa3c3625a12dcb53b079b06) OR target_hash = bytes32(0x0000000000000000000000000000000000000000000000000000000000000000))) AND ($creator = addr(0x70E5d4986A251a5173Acf59c86178e144B62864E) OR $creator = addr(0x7169173d0D00db282f385FEE8BeCe2D67d10c6f0) OR $creator = addr(0x04a16DA7180594eF2dFFcF70431e809432CE438F))",{"select":{"key":true,"owner":true,"creator":true,"createdAt":true,"updatedAt":true,"expiresAt":true,"creationFlags":true,"contentType":true,"payload":true,"attributeSchema":true,"attributes":true},"limit":"0xc8"}]}
+
+Details: "ANON_COST_LIMITED"
+Version: viem@2.57.4
+## publisher-v2 re-publishes the endpoints (not the docs site)
+publisher 0x7169173d0D00db282f385FEE8BeCe2D67d10c6f0 republished {"txHash":"0x6f93e7fe4d30a90961c459a8cee2c38800f6e8f81115162d6887cebd4fab88f6","keys":["0xa0c5af7d237c64ad6a7b47118e2fff59ab8ec38dfb1aae1006c1d2911effdbaf","0x06bcf0fd6741095a04ab2c7399b618c8c32ffdb99395a8fde9374f548e4682f9","0xe6af6cd641a8bf587fba76afeba899c49ee88b91f5c065da47b1108f7e5e6e94","0xc18f9a2dd8f03534aa27dfa8151097d7e5e2c55d4efbe58ab0a4831ef922ad25","0x57293413421506780a23e1441927ca3f5acdafcb1d0d975fe437d35e76d1daf7","0x6d8391e29d6b3482b72f0bb1ba05570dca2a2bd33de69dd7be2bbfe1093457ef","0x07886d27edb2859083affffcf3200d69e0bdb78dc00e48652589ac291b5454f0"]}
+## after
+error: HTTP request failed.
+
+Status: 429
+URL: https://rpc.tiramisu.db-chain.testnet.arkiv.network/
+Request body: {"method":"arkiv_query","params":["app = str('officially.v1') AND (type = str('endpoint') AND target_hash = bytes32(0x2cf8134854d8475760a07fd045ccbc32f6a9b9f1a79152c9ecdc9dd66495d370) OR type = str('incident') AND (target_hash = bytes32(0x2cf8134854d8475760a07fd045ccbc32f6a9b9f1a79152c9ecdc9dd66495d370) OR target_hash = bytes32(0x0000000000000000000000000000000000000000000000000000000000000000))) AND ($creator = addr(0x70E5d4986A251a5173Acf59c86178e144B62864E) OR $creator = addr(0x7169173d0D00db282f385FEE8BeCe2D67d10c6f0) OR $creator = addr(0x04a16DA7180594eF2dFFcF70431e809432CE438F))",{"select":{"key":true,"owner":true,"creator":true,"createdAt":true,"updatedAt":true,"expiresAt":true,"creationFlags":true,"contentType":true,"payload":true,"attributeSchema":true,"attributes":true},"limit":"0xc8"}]}
+
+Details: "ANON_COST_LIMITED"
+Version: viem@2.57.4
+error: HTTP request failed.
+
+Status: 429
+URL: https://rpc.tiramisu.db-chain.testnet.arkiv.network/
+Request body: {"method":"arkiv_query","params":["app = str('officially.v1') AND type = str('project') AND $creator = addr(0x70E5d4986A251a5173Acf59c86178e144B62864E)",{"select":{"key":true,"owner":true,"creator":true,"createdAt":true,"updatedAt":true,"expiresAt":true,"creationFlags":true,"contentType":true,"payload":true,"attributeSchema":true,"attributes":true},"limit":"0xc8"}]}
+
+Details: "ANON_COST_LIMITED"
+Version: viem@2.57.4
+error: HTTP request failed.
+
+Status: 429
+URL: https://rpc.tiramisu.db-chain.testnet.arkiv.network/
+Request body: {"method":"arkiv_query","params":["app = str('officially.v1') AND type = str('project') AND $creator = addr(0x70E5d4986A251a5173Acf59c86178e144B62864E)",{"select":{"key":true,"owner":true,"creator":true,"createdAt":true,"updatedAt":true,"expiresAt":true,"creationFlags":true,"contentType":true,"payload":true,"attributeSchema":true,"attributes":true},"limit":"0xc8"}]}
+
+Details: "ANON_COST_LIMITED"
+Version: viem@2.57.4
+error: HTTP request failed.
+
+Status: 429
+URL: https://rpc.tiramisu.db-chain.testnet.arkiv.network/
+Request body: {"method":"arkiv_query","params":["app = str('officially.v1') AND type = str('project') AND $creator = addr(0x70E5d4986A251a5173Acf59c86178e144B62864E)",{"select":{"key":true,"owner":true,"creator":true,"createdAt":true,"updatedAt":true,"expiresAt":true,"creationFlags":true,"contentType":true,"payload":true,"attributeSchema":true,"attributes":true},"limit":"0xc8"}]}
+
+Details: "ANON_COST_LIMITED"
+Version: viem@2.57.4

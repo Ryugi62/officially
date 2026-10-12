@@ -7,4 +7,5 @@ run check https://app.demo-swap.example --root $R
 run check eip155:11155111:0xbad0000000000000000000000000000000000bad --root $R
 run check https://demo-swap-airdrop.example --root $R
 run check https://v1.demo-swap.example --root $R
+run check https://docs.demo-swap.example --root $R
 echo "\$ node examples/independent-check.mjs https://demo-swap-airdrop.example $R"; node examples/independent-check.mjs https://demo-swap-airdrop.example $R

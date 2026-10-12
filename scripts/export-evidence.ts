@@ -15,14 +15,15 @@ import type { EndpointClaim, Incident, ProjectRecord } from "../src/domain/types
 const EXPLORER = "https://tiramisu.explorer.arkiv.network"
 const WALLETS = [
   { role: "Demo Swap root key — signs project records only", address: DEMO.rootKey },
-  { role: "Demo Swap publisher key — endpoint claims, lease renewals, incidents", address: DEMO.publisher },
+  { role: "Demo Swap publisher key (v2, since the 12 Oct rotation) — endpoint claims, lease renewals, incidents", address: DEMO.publisher },
+  { role: "Demo Swap's first publisher key — retired by the root on 12 Oct (its claims read REVOKED; incidents it raised before retirement still count)", address: "0x04a16DA7180594eF2dFFcF70431e809432CE438F" },
   { role: "Simulated attacker — forged claim under Demo Swap's name (for the FORGED demo)", address: "0xcb7074f79E887426Eba3aE9039F0b2ed620a8d6e" },
   { role: "Community wallet — keeps an incident alive (permissionless extension)", address: "0x81989FF0bCd1B25b9b751c53a7266904F83B5ec2" },
 ]
 const c = createPublicClient({ chain: tiramisu, transport: http(undefined, { retryCount: 0 }) })
 const all: (ProjectRecord | EndpointClaim | Incident)[] = []
 let block = 0n
-for (const w of WALLETS.slice(0, 3)) {
+for (const w of WALLETS.slice(0, 4)) {
   let cursor: string | undefined
   do {
     let q = c.select().where(and(eq("app", str(NAMESPACE)))).createdBy(w.address as `0x${string}`).limit(200)

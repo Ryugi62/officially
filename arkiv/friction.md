@@ -80,6 +80,10 @@ Every item below has a runnable repro in `scripts/repro/` (or `scripts/`) and th
 - **Tested**: the publisher's claims read once with `limit(200)` and walked with `limit(2)` + `cursor()`.
 - **Expected → result**: same 8 claims, 4 pages, 0 duplicates (`cursor-walk.log`).
 
+### S8 — Key rotation: create + delete of a `readonly` record in one batch
+- **Tested**: the root signs `executeBatch({ creates: [new project record], deletes: [old record] })`; then a second wallet re-publishes the endpoints.
+- **Expected → result**: one transaction; right after it, the old publisher's claim on `https://app.demo-swap.example` reads `REVOKED` (`rotation.log`). `readonly` blocked edits but not the owner's delete, exactly as documented. The reads after it in the same log hit the anonymous budget (F6: HTTP 429 `ANON_COST_LIMITED`), and the CLI reported them immediately instead of hanging (`retryCount: 0`).
+
 ### S5 — Public reads from Node and from a static page, no key
 - **Tested**: 10 checks (half single links, half whole transactions) against the public RPC.
 - **Result**: p50 664 ms, p90 1,598 ms, at most 3 RPC requests per check (`measure-latency.log`); the SDK's ESM build bundles into a static page with no Node polyfills (size in `arkiv/repro-logs/web-build.log`).
