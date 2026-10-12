@@ -1,0 +1,15 @@
+# 2026-10-12T02:09:32Z npx tsx scripts/seed.ts --incident (keys from macOS keychain via env)
+1 root names publisher {"txHash":"0x173a3725d4eb0429ee849bb8c9fca9753f6e0eb1552737ac3089b81c92200b09","key":"0x8cbc354cb4e7b90a49d9e63196b9fa0614ce4153429da342afb79b8f7a5fe3aa"}
+/Users/ryugi62/dev/officially/src/domain/target.ts:37
+    if (!m) throw new InvalidTargetError(`Not an X handle: ${input}`)
+                  ^
+
+InvalidTargetError: Not an X handle: @demoswap_example
+    at normalizeTarget (/Users/ryugi62/dev/officially/src/domain/target.ts:37:19)
+    at <anonymous> (/Users/ryugi62/dev/officially/src/application/writes.ts:30:20)
+    at Array.map (<anonymous>)
+    at publishEndpoints (/Users/ryugi62/dev/officially/src/application/writes.ts:29:49)
+    at <anonymous> (/Users/ryugi62/dev/officially/scripts/seed.ts:27:46)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+Node.js v24.20.0

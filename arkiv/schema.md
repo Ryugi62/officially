@@ -40,7 +40,7 @@ System attributes the app relies on: `$creator` (trust), `$owner` (shows that in
 | Entity | Payload |
 |---|---|
 | `project` | `{ "name": string, "slug": string, "publisher": address, "anchors": [{ "kind": "github" \| "ens" \| "well-known", "ref": string }] }` |
-| `endpoint` | `{ "target": string, "label": string }` |
+| `endpoint` | `{ "target": string, "label": string, "retiring"?: true }` — `retiring` marks an endpoint published with a scheduled retirement: its lease ends on that date and renewals skip it |
 | `incident` | `{ "target": string \| "*", "title": string, "advice": string }` — rendered as plain text, links removed |
 
 No payload ever holds a key, a secret or personal data: the writers refuse key-shaped hex, e-mail addresses, phone numbers and seed-phrase-shaped text (`src/domain/sensitive.ts`). All demo data is synthetic.
@@ -72,7 +72,7 @@ A check of one link, or of a whole transaction (origin + contract + spender), co
 | Use case | Signer | Operations in the batch | Why it must be atomic |
 |---|---|---|---|
 | Publish endpoints | publisher | N × create `endpoint` | A deploy's endpoint set appears all at once or not at all |
-| Renew leases | publisher | N × `extendEntity` (30 days from now) | One transaction per deploy, one nonce |
+| Renew leases | publisher | N × `extendEntity` (30 days from now) on every live claim not marked `retiring` | One transaction per deploy, one nonce |
 | Raise incident | publisher or root | create `incident` (salt from `predictEntityKeys`) + `changeOwnership` → burn address | The warning never exists for a single block in a state where a stolen key could delete it |
 | Keep a warning alive | **anyone** | `extendEntity` on the incident (72 hours from now) | — (permissionless extension) |
 | Rotate publisher | root | create new `project` record (`revokes` = old publisher) + delete the old record | There is never a moment with zero or two authorized publishers |

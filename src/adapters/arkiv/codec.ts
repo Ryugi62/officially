@@ -98,6 +98,7 @@ export function fromSdkEntity(e: Entity): ProjectRecord | EndpointClaim | Incide
         targetKind: (s(attrs, "kind") ?? "web") as TargetKind,
         projectSlug: s(attrs, "project_slug") ?? "",
         label: text(p.label),
+        ...(p.retiring === true && { retiring: true }),
       }
     }
     case "incident": {

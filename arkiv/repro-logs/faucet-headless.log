@@ -1,0 +1,4 @@
+# 2026-10-12T02:02:34Z node v24.20.0 — HUB_KEY=<testnet key from keychain> npx tsx scripts/repro/faucet-headless.ts <recipient>
+faucet state {"amountGlm":"10","cooldownUntil":null}
+note: server sent an instrumentation blob (not executed)
+captcha failed Blocked by instrumentation 4482 ms

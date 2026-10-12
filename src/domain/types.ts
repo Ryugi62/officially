@@ -40,6 +40,8 @@ export interface EndpointClaim extends AttestationBase {
   /** self-declared, writable by anyone — display only */
   projectSlug: string
   label: string
+  /** published with a scheduled retirement: renewals leave it to lapse */
+  retiring?: boolean
 }
 
 export interface Incident extends AttestationBase {

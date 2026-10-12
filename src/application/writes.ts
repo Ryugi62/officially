@@ -1,6 +1,6 @@
 import { CONTRACT, NAMESPACE, type EntityName } from "../domain/contract"
 import { hashTarget, PROJECT_WIDE } from "../domain/hash"
-import { BURN_ADDRESS, ENDPOINT_LEASE_SECONDS, INCIDENT_SECONDS, PROJECT_RECORD_SECONDS } from "../domain/lifetimes"
+import { BLOCK_SECONDS, BURN_ADDRESS, ENDPOINT_LEASE_SECONDS, INCIDENT_SECONDS, PROJECT_RECORD_SECONDS } from "../domain/lifetimes"
 import { assertNoSensitive } from "../domain/sensitive"
 import { normalizeTarget } from "../domain/target"
 import type { Address, Anchor, Hex } from "../domain/types"
@@ -24,15 +24,18 @@ function attributes(entity: EntityName, values: Record<string, string | number |
 /** UC-2: publish official endpoints in one atomic, readonly batch with a 30-day lease. */
 export async function publishEndpoints(
   writer: AttestationWriter,
-  input: { projectSlug: string; endpoints: { raw: string; label: string; chainId?: number }[] },
+  input: { projectSlug: string; endpoints: { raw: string; label: string; chainId?: number; retireInSeconds?: number }[] },
 ) {
   const creates: CreateSpec[] = input.endpoints.map((e) => {
     const target = normalizeTarget(e.raw, e.chainId === undefined ? {} : { chainId: e.chainId })
+    const lease = e.retireInSeconds ?? ENDPOINT_LEASE_SECONDS
+    if (lease > ENDPOINT_LEASE_SECONDS) throw new RangeError("A retiring endpoint cannot outlive the normal 30-day lease")
+    if (lease <= 0 || lease % BLOCK_SECONDS !== 0) throw new RangeError("Retirement must be a whole number of 2-second blocks from now")
     return {
       entity: "endpoint",
       attributes: attributes("endpoint", { project_slug: input.projectSlug, kind: target.kind, target_hash: hashTarget(target) }),
-      payload: { target: target.value, label: e.label },
-      expiresInSeconds: ENDPOINT_LEASE_SECONDS,
+      payload: { target: target.value, label: e.label, ...(e.retireInSeconds !== undefined && { retiring: true }) },
+      expiresInSeconds: lease,
       flags: { readonly: true, permissionlessExtension: false },
     }
   })
@@ -43,7 +46,7 @@ export async function publishEndpoints(
 
 /** UC-3: renew every live claim of this publisher in one transaction (run it on every deploy). */
 export async function renewLeases(writer: AttestationWriter, reader: AttestationReader) {
-  const claims = await reader.findClaimsByCreator(writer.address)
+  const claims = (await reader.findClaimsByCreator(writer.address)).filter((c) => !c.retiring)
   if (claims.length === 0) return { renewed: 0 as const, txHash: undefined }
   const res = await writer.submit({
     ...emptyBatch(),

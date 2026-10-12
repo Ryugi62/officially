@@ -130,3 +130,33 @@ describe("rotatePublisher (UC-6, AC-11)", () => {
     expect(attr(w.batches[0]!.creates[0]!, "revokes")).toBeUndefined()
   })
 })
+
+describe("scheduled retirement", () => {
+  it("an endpoint can be published with a shorter lease that ends at its retirement, never a longer one", async () => {
+    const w = new FakeWriter(PUB_A)
+    await publishEndpoints(w, { projectSlug: "demo-swap", endpoints: [{ raw: "https://v1.demo-swap.example", label: "v1 app (retiring)", retireInSeconds: 8 * 24 * 3600 }] })
+    expect(w.batches[0]!.creates[0]!.expiresInSeconds).toBe(8 * 24 * 3600)
+    await expect(
+      publishEndpoints(w, { projectSlug: "demo-swap", endpoints: [{ raw: "https://v1.demo-swap.example", label: "x", retireInSeconds: ENDPOINT_LEASE_SECONDS + 2 }] }),
+    ).rejects.toThrow(/lease/)
+    await expect(
+      publishEndpoints(w, { projectSlug: "demo-swap", endpoints: [{ raw: "https://v1.demo-swap.example", label: "x", retireInSeconds: 7 }] }),
+    ).rejects.toThrow(/block/)
+  })
+})
+
+describe("renewal respects retirement", () => {
+  it("renewLeases skips claims published as retiring", async () => {
+    const w = new FakeWriter(PUB_A)
+    const h = hashTarget(normalizeTarget("https://a.example"))
+    const reader = new FakeReader([], [claim({ targetHash: h, creator: PUB_A }), claim({ targetHash: h, creator: PUB_A, retiring: true })])
+    const r = await renewLeases(w, reader)
+    expect(r.renewed).toBe(1)
+    expect(w.batches[0]!.extensions).toHaveLength(1)
+  })
+  it("a retiring publish marks the payload so renewals and readers can tell", async () => {
+    const w = new FakeWriter(PUB_A)
+    await publishEndpoints(w, { projectSlug: "demo-swap", endpoints: [{ raw: "https://v1.demo-swap.example", label: "v1", retireInSeconds: 3600 }] })
+    expect(w.batches[0]!.creates[0]!.payload).toMatchObject({ retiring: true })
+  })
+})
