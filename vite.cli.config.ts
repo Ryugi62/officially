@@ -2,6 +2,7 @@ import { defineConfig } from "vite"
 import { builtinModules } from "node:module"
 // Bundles the CLI into one ESM file so `npx github:Ryugi62/officially` needs no build step.
 export default defineConfig({
+  publicDir: false,
   build: {
     ssr: "src/infrastructure/cli-entry.ts",
     outDir: "bin",
