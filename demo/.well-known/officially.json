@@ -1,0 +1,9 @@
+{
+  "project": "Demo Swap (synthetic)",
+  "note": "Synthetic demo project for the Officially entry to Arkiv: Global Tour Stop. Not a real protocol.",
+  "officially": {
+    "contract": "officially.v1",
+    "network": "Arkiv Tiramisu testnet (chain 7738577)",
+    "rootKey": "0x70E5d4986A251a5173Acf59c86178e144B62864E"
+  }
+}
