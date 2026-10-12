@@ -28,6 +28,14 @@ The pattern repeats because the victim does everything right: they type the real
 
 **What changes from day one.** A project runs one command on its next deploy (`officially publish …`) and its official sites, handles and contracts — and any incident it raises — become checkable by anyone, from a web page, a CLI, a wallet or a bot, without trusting the project's DNS, its X account, or us.
 
+## Per track
+
+| Track | What the rubric asks | Where Officially does it |
+|---|---|---|
+| **Security** | "shows or filters Arkiv entities by their on-chain creator (`$creator`), not by a field anyone can write" | Every verdict comes from `$creator` filtered inside the query ([`reader.ts`](src/adapters/arkiv/reader.ts)); `project_slug`, labels and payloads are display-only. A property test generates random slugs and labels on a claim from another key and never gets `OFFICIAL` ([`verdict.test.ts`](tests/domain/verdict.test.ts), AC-5). The live demo's forged spender is "published" under Demo Swap's exact name and is shown as **FORGED**. |
+| **Censorship Resistance** | "someone outside the team can read and query the data from Arkiv without the team's backend" | There is no backend: the app is static files on GitHub Pages talking to the public RPC. The `curl` in [Reproduce](#reproduce-it) reads everything with no code of ours. Incidents are burned on creation and kept alive by anyone, so neither the team nor an attacker holding its key can silence one. |
+| **Open Source** | "another team can build on the dataset or tool without asking permission, from a documented data contract" | [`/arkiv/schema.md`](arkiv/schema.md) is the contract. [`examples/independent-check.mjs`](examples/independent-check.mjs) is a second client written from it alone: raw JSON-RPC plus keccak, nothing imported from `src/`. A test shows it reaches the same verdict as the app in 8 scenarios ([`independent-client.test.ts`](tests/adapters/independent-client.test.ts)). MIT. |
+
 ## What Officially is not (and what already exists)
 
 | Existing | How it works | What it does not do that Officially does |
