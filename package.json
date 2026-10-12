@@ -1,0 +1,32 @@
+{
+  "name": "officially",
+  "version": "0.1.0",
+  "description": "Check whether a link, contract or handle was published by a Web3 project's own key — straight from Arkiv, no server in between.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "officially": "./bin/officially.mjs"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "engines": {
+    "node": ">=22.10"
+  },
+  "dependencies": {
+    "@arkiv-network/sdk": "^0.8.1",
+    "@noble/hashes": "^1.8.0",
+    "viem": "^2.57.4"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "fast-check": "^4.10.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.3"
+  }
+}
