@@ -56,7 +56,7 @@ Every item below has a runnable repro in `scripts/repro/` (or `scripts/`) and th
 - **Impact on us**: a judge who flips the demo switch a few times would exhaust the per-minute window. We added a caching reader (`src/adapters/memory/caching-reader.ts`: project records 5 min, checks 20 s, invalidated by the live incident feed), `retryCount: 0` plus a 15 s timeout, and a published snapshot fallback that the page announces when it is used.
 - **What would fix it**: put both windows and the per-method costs in the Access Keys page, and make the SDK surface a 429 as a typed error with the `Retry-After` value instead of waiting.
 
-### F7 — A rotated key's old record cannot be re-read after rotation by the SDK without a second root pin; and the rotation check burns the anonymous budget
+### F7 — Verifying a rotation spends the anonymous RPC budget; whether `readonly` blocks owner deletion is undocumented
 - **Surface**: SDK `executeBatch({ creates, deletes })` + `arkiv_query` cost (`arkiv-cost: 100` per query, Access Keys page gives no numbers).
 - **Expected**: after one rotation batch, re-checking 2 endpoints needs ~4 queries.
 - **Actual**: the rotation, the re-publish and the follow-up verification ran inside the same minutes; `rotation.log` shows the verification reads answered `HTTP 429 ANON_COST_LIMITED` mid-run, so the first run of the evidence had to be repeated later (`verify-rotation.sh`, `verify-rotation.log`). The delete of a `readonly` record by its owner worked (S8) but nothing in the docs says whether `readonly` blocks deletion; we found out by trying.
