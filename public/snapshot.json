@@ -1,18 +1,26 @@
 {
   "note": "Snapshot of the synthetic Demo Swap entities, shown only if the public Arkiv RPC rate-limits the viewer. Regenerate with npx tsx scripts/export-evidence.ts.",
-  "block": "461969",
-  "takenAt": "2026-10-12T02:54:50.393Z",
+  "block": "512773",
+  "takenAt": "2026-10-13T07:08:18.892Z",
+  "rotation": {
+    "txHash": "0x34ac5dc20adf43f81048c2a558c5aa455f2087b40b20e87c9abd8beb9d286df4",
+    "block": 462115,
+    "newProjectRecordKey": "0x638422a2f085ecfa06d7857143fb357f282ce56a32b9ef65bc9464b71a43cb23",
+    "retiredPublisher": "0x04a16DA7180594eF2dFFcF70431e809432CE438F",
+    "expectedVerdictForRetiredKeyClaims": "REVOKED"
+  },
   "records": [
     {
-      "key": "0x8cbc354cb4e7b90a49d9e63196b9fa0614ce4153429da342afb79b8f7a5fe3aa",
+      "key": "0x638422a2f085ecfa06d7857143fb357f282ce56a32b9ef65bc9464b71a43cb23",
       "creator": "0x70e5d4986a251a5173acf59c86178e144b62864e",
       "owner": "0x70e5d4986a251a5173acf59c86178e144b62864e",
-      "createdAtBlock": "460613",
-      "expiresAtBlock": "16228613",
+      "createdAtBlock": "462115",
+      "expiresAtBlock": "16230115",
       "entity": "project",
       "slug": "demo-swap",
       "name": "Demo Swap (synthetic)",
-      "publisher": "0x04a16da7180594ef2dffcf70431e809432ce438f",
+      "publisher": "0x7169173d0d00db282f385fee8bece2d67d10c6f0",
+      "revokes": "0x04a16da7180594ef2dffcf70431e809432ce438f",
       "anchors": [
         {
           "kind": "github",
@@ -22,6 +30,100 @@
     }
   ],
   "claims": [
+    {
+      "key": "0xe6af6cd641a8bf587fba76afeba899c49ee88b91f5c065da47b1108f7e5e6e94",
+      "creator": "0x7169173d0d00db282f385fee8bece2d67d10c6f0",
+      "owner": "0x7169173d0d00db282f385fee8bece2d67d10c6f0",
+      "createdAtBlock": "462121",
+      "expiresAtBlock": "1758121",
+      "entity": "endpoint",
+      "targetHash": "0xb658290f0e6de53e6e09a04dea380539088d3bf123d5498de537ec213925329a",
+      "target": "eip155:11155111:0x5eed00000000000000000000000000000000a11c",
+      "targetKind": "contract",
+      "projectSlug": "demo-swap",
+      "label": "Swap router"
+    },
+    {
+      "key": "0xc18f9a2dd8f03534aa27dfa8151097d7e5e2c55d4efbe58ab0a4831ef922ad25",
+      "creator": "0x7169173d0d00db282f385fee8bece2d67d10c6f0",
+      "owner": "0x7169173d0d00db282f385fee8bece2d67d10c6f0",
+      "createdAtBlock": "462121",
+      "expiresAtBlock": "1758121",
+      "entity": "endpoint",
+      "targetHash": "0x3a45251157229c3b4636c1e4867fe58ed683e414ae744f54e3f72609a6b2e460",
+      "target": "x:@demoswap_ex",
+      "targetKind": "social",
+      "projectSlug": "demo-swap",
+      "label": "X account"
+    },
+    {
+      "key": "0xa0c5af7d237c64ad6a7b47118e2fff59ab8ec38dfb1aae1006c1d2911effdbaf",
+      "creator": "0x7169173d0d00db282f385fee8bece2d67d10c6f0",
+      "owner": "0x7169173d0d00db282f385fee8bece2d67d10c6f0",
+      "createdAtBlock": "462121",
+      "expiresAtBlock": "1758121",
+      "entity": "endpoint",
+      "targetHash": "0x2cf8134854d8475760a07fd045ccbc32f6a9b9f1a79152c9ecdc9dd66495d370",
+      "target": "https://app.demo-swap.example",
+      "targetKind": "web",
+      "projectSlug": "demo-swap",
+      "label": "App"
+    },
+    {
+      "key": "0x6d8391e29d6b3482b72f0bb1ba05570dca2a2bd33de69dd7be2bbfe1093457ef",
+      "creator": "0x7169173d0d00db282f385fee8bece2d67d10c6f0",
+      "owner": "0x7169173d0d00db282f385fee8bece2d67d10c6f0",
+      "createdAtBlock": "462121",
+      "expiresAtBlock": "867125",
+      "entity": "endpoint",
+      "targetHash": "0x9f87680ceabc12be90b4251783abfe5638446ac6391fe81bba1a3fe05b5153a4",
+      "target": "eip155:11155111:0x5eed00000000000000000000000000000000a110",
+      "targetKind": "contract",
+      "projectSlug": "demo-swap",
+      "label": "Router v1 (retires 21 Oct)",
+      "retiring": true
+    },
+    {
+      "key": "0x57293413421506780a23e1441927ca3f5acdafcb1d0d975fe437d35e76d1daf7",
+      "creator": "0x7169173d0d00db282f385fee8bece2d67d10c6f0",
+      "owner": "0x7169173d0d00db282f385fee8bece2d67d10c6f0",
+      "createdAtBlock": "462121",
+      "expiresAtBlock": "823925",
+      "entity": "endpoint",
+      "targetHash": "0x300a4a62552104c452708b0835a7f05075558b0416380b2d16873830fb47df13",
+      "target": "https://v1.demo-swap.example",
+      "targetKind": "web",
+      "projectSlug": "demo-swap",
+      "label": "v1 app (retires 20 Oct)",
+      "retiring": true
+    },
+    {
+      "key": "0x07886d27edb2859083affffcf3200d69e0bdb78dc00e48652589ac291b5454f0",
+      "creator": "0x7169173d0d00db282f385fee8bece2d67d10c6f0",
+      "owner": "0x7169173d0d00db282f385fee8bece2d67d10c6f0",
+      "createdAtBlock": "462121",
+      "expiresAtBlock": "910325",
+      "entity": "endpoint",
+      "targetHash": "0xd88f941f166cbc2ed5f2c1ad87ba27ee083d6149daae946c970b07d6e508cd0c",
+      "target": "https://beta.demo-swap.example",
+      "targetKind": "web",
+      "projectSlug": "demo-swap",
+      "label": "Beta app (retires 22 Oct)",
+      "retiring": true
+    },
+    {
+      "key": "0x06bcf0fd6741095a04ab2c7399b618c8c32ffdb99395a8fde9374f548e4682f9",
+      "creator": "0x7169173d0d00db282f385fee8bece2d67d10c6f0",
+      "owner": "0x7169173d0d00db282f385fee8bece2d67d10c6f0",
+      "createdAtBlock": "462121",
+      "expiresAtBlock": "1758121",
+      "entity": "endpoint",
+      "targetHash": "0x86abe8ca76ae34f85993644f3ba581172a4db64ec094b85f34be3eb2b0c2e66d",
+      "target": "eip155:11155111:0x5eed00000000000000000000000000000000aaaa",
+      "targetKind": "contract",
+      "projectSlug": "demo-swap",
+      "label": "USDC (demo) token"
+    },
     {
       "key": "0x335073e263ae2c163acd3c6b3812c01d5be7a26e9514d5f8268d2f6783f82427",
       "creator": "0x04a16da7180594ef2dffcf70431e809432ce438f",
@@ -156,20 +258,6 @@
       "severity": 3,
       "title": "Fake airdrop site",
       "advice": "This site impersonates Demo Swap. We run no airdrop. Do not connect a wallet.",
-      "projectSlug": "demo-swap"
-    },
-    {
-      "key": "0xbcc5d6621b04d0af4b6140120d7e110ab41f477d890a686bfb568edcda3aa8d1",
-      "creator": "0x04a16da7180594ef2dffcf70431e809432ce438f",
-      "owner": "0x000000000000000000000000000000000000dead",
-      "createdAtBlock": "461590",
-      "expiresAtBlock": "504790",
-      "entity": "incident",
-      "targetHash": "0x7bc41109b079b9cf204dc118109d794f37872100c7508a13a76651d9607e156c",
-      "target": "https://demo-swap-support.example",
-      "severity": 1,
-      "title": "Fake support desk",
-      "advice": "We never DM you or ask for your seed phrase. This site is not ours.",
       "projectSlug": "demo-swap"
     },
     {

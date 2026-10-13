@@ -39,6 +39,7 @@ const snap = {
   note: "Snapshot of the synthetic Demo Swap entities, shown only if the public Arkiv RPC rate-limits the viewer. Regenerate with npx tsx scripts/export-evidence.ts.",
   block: block.toString(),
   takenAt: new Date().toISOString(),
+  rotation: { txHash: "0x34ac5dc20adf43f81048c2a558c5aa455f2087b40b20e87c9abd8beb9d286df4", block: 462115, newProjectRecordKey: "0x638422a2f085ecfa06d7857143fb357f282ce56a32b9ef65bc9464b71a43cb23", retiredPublisher: "0x04a16DA7180594eF2dFFcF70431e809432CE438F", expectedVerdictForRetiredKeyClaims: "REVOKED" },
   records: all.filter((x) => x.entity === "project"),
   claims: all.filter((x) => x.entity === "endpoint"),
   incidents: all.filter((x) => x.entity === "incident"),

@@ -1,0 +1,17 @@
+## path 1: the three places a node URL is published (docs page, SDK chain definition, chain registries)
+docs.arkiv.network/networks/tiramisu/ mentions:
+rpc.tiramisu.db-chain.testnet.arkiv.network
+SDK dist mentions:
+https://rpc.tiramisu.db-chain.testnet.arkiv.network
+chainlist.org entries for 7738577:
+[]
+ethereum-lists/chains eip155-7738577.json:
+404
+## path 2: guessed hostnames (eth_blockNumber POST; 000 = no DNS/connection)
+https://tiramisu.db-chain.testnet.arkiv.network -> 000
+https://rpc2.tiramisu.db-chain.testnet.arkiv.network -> 000
+https://rpc.tiramisu.arkiv.network -> 000
+https://tiramisu.hoodi.arkiv.network/rpc -> 000
+## path 3: the explorer's own API (does it proxy JSON-RPC?)
+https://tiramisu.explorer.arkiv.network/api/eth-rpc -> 405
+https://tiramisu.explorer.arkiv.network/api/v2/stats -> 405

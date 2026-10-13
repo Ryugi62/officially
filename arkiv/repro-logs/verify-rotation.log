@@ -1,0 +1,8 @@
+## rotation transaction (one batch: create new project record + delete old one)
+status 1 block 462115 from 0x70e5d4986a251a5173acf59c86178e144b62864e logs 2
+## verdicts (root pinned out of band)
+REVOKED   https://docs.demo-swap.example
+          Published by 0x04a16da7180594ef2dffcf70431e809432ce438f, a key the project's root has rotated away from.
+PROBATION https://app.demo-swap.example
+          Published by 0x7169173d0d00db282f385fee8bece2d67d10c6f0, a key the pinned root trusts, less than 48 hours ago.
+          New endpoints are held for 48 hours so the team can notice a stolen publisher key before anyone relies on it.

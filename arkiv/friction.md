@@ -56,6 +56,21 @@ Every item below has a runnable repro in `scripts/repro/` (or `scripts/`) and th
 - **Impact on us**: a judge who flips the demo switch a few times would exhaust the per-minute window. We added a caching reader (`src/adapters/memory/caching-reader.ts`: project records 5 min, checks 20 s, invalidated by the live incident feed), `retryCount: 0` plus a 15 s timeout, and a published snapshot fallback that the page announces when it is used.
 - **What would fix it**: put both windows and the per-method costs in the Access Keys page, and make the SDK surface a 429 as a typed error with the `Retry-After` value instead of waiting.
 
+### F7 — A rotated key's old record cannot be re-read after rotation by the SDK without a second root pin; and the rotation check burns the anonymous budget
+- **Surface**: SDK `executeBatch({ creates, deletes })` + `arkiv_query` cost (`arkiv-cost: 100` per query, Access Keys page gives no numbers).
+- **Expected**: after one rotation batch, re-checking 2 endpoints needs ~4 queries.
+- **Actual**: the rotation, the re-publish and the follow-up verification ran inside the same minutes; `rotation.log` shows the verification reads answered `HTTP 429 ANON_COST_LIMITED` mid-run, so the first run of the evidence had to be repeated later (`verify-rotation.sh`, `verify-rotation.log`). The delete of a `readonly` record by its owner worked (S8) but nothing in the docs says whether `readonly` blocks deletion; we found out by trying.
+- **Repro**: `sh scripts/repro/verify-rotation.sh` → `arkiv/repro-logs/verify-rotation.log` · `arkiv/repro-logs/rotation.log` (429 lines kept as printed).
+- **What would fix it**: document that `readonly` blocks edits but not owner deletion, and show the per-method cost table next to the rate limit.
+
+### F8 — Tiramisu has exactly one public RPC; there is no second node to cross-check a read
+- **Surface**: docs [Tiramisu](https://docs.arkiv.network/networks/tiramisu/), SDK chain definition, public chain registries.
+- **Expected**: a verifier who distrusts one operator can point the same query at another.
+- **Actual**: one URL everywhere; chainlist.org and ethereum-lists/chains have no entry for chain 7738577; guessed hostnames do not resolve; the explorer does not proxy JSON-RPC.
+- **Repro**: `sh scripts/repro/second-rpc.sh` → `arkiv/repro-logs/second-rpc.log`.
+- **Impact on us**: "a lying RPC could fake OFFICIAL" cannot be tested against a second node; Officially exposes `?rpc=` and `OFFICIALLY_RPC` and says so in the README.
+- **What would fix it**: list community/watcher RPCs on the Tiramisu page, or register the chain in ethereum-lists/chains with more than one endpoint.
+
 ---
 
 ## Smooth paths (tested, worked as documented)
