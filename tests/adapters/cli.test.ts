@@ -13,7 +13,7 @@ describe("CLI args", () => {
   })
   it("exit code: 0 only when official", () => {
     expect(exitCodeFor("OFFICIAL")).toBe(0)
-    for (const s of ["PROBATION", "INCIDENT", "FORGED", "REVOKED", "UNLISTED", "UNPINNED"] as const) expect(exitCodeFor(s)).toBe(1)
+    for (const s of ["PROBATION", "INCIDENT", "FORGED", "REVOKED", "UNLISTED", "UNPINNED", "UNVERIFIED_KEY"] as const) expect(exitCodeFor(s)).toBe(1)
   })
   it("rejects an unknown command", () => {
     expect(() => parseArgs(["frobnicate"])).toThrow(/Unknown command/)

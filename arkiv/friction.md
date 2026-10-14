@@ -73,7 +73,7 @@ Every item below has a runnable repro in `scripts/repro/` (or `scripts/`) and th
 
 ---
 
-## Smooth paths (tested, worked as documented)
+## Smooth paths (tested, worked; S8 worked but is not documented — see F7)
 
 ### S1 — `$creator` inside `where()`, including OR over several creators
 - **Tested**: `or(eq("$creator", addr(root)), eq("$creator", addr(publisher)))` combined with typed attribute predicates, from the SDK and from raw JSON-RPC.
@@ -91,14 +91,6 @@ Every item below has a runnable repro in `scripts/repro/` (or `scripts/`) and th
 - **Tested**: subscribe with `createPublicClient({ transport: webSocket(wss://…) })`, then raise an incident from another process.
 - **Expected → result**: transport type `webSocket`; the `EntityCreated` event for the same key arrived 817 ms after the write resolved (5.3 s after send, including ~2 s blocks) (`ws-incident-latency.log`). In the browser (headless Chromium on the deployed page), an incident raised by the CLI from another process showed its banner 4,830 ms after sending, with one page navigation in total (`browser-live.log`). Note: as [sdk-js #112](https://github.com/Arkiv-Network/arkiv-sdk-js/issues/112) says, nothing tells the caller whether it is pushing or polling; we infer push from the transport.
 
-### S7 — Cursor pagination walks the same set
-- **Tested**: the publisher's claims read once with `limit(200)` and walked with `limit(2)` + `cursor()`.
-- **Expected → result**: same 8 claims, 4 pages, 0 duplicates (`cursor-walk.log`).
-
-### S8 — Key rotation: create + delete of a `readonly` record in one batch
-- **Tested**: the root signs `executeBatch({ creates: [new project record], deletes: [old record] })`; then a second wallet re-publishes the endpoints.
-- **Expected → result**: one transaction; right after it, the old publisher's claim on `https://app.demo-swap.example` reads `REVOKED` (`rotation.log`). `readonly` blocked edits but not the owner's delete, exactly as documented. The reads after it in the same log hit the anonymous budget (F6: HTTP 429 `ANON_COST_LIMITED`), and the CLI reported them immediately instead of hanging (`retryCount: 0`).
-
 ### S5 — Public reads from Node and from a static page, no key
 - **Tested**: 10 checks (half single links, half whole transactions) against the public RPC.
 - **Result**: p50 664 ms, p90 1,598 ms, at most 3 RPC requests per check (`measure-latency.log`); the SDK's ESM build bundles into a static page with no Node polyfills (size in `arkiv/repro-logs/web-build.log`).
@@ -106,3 +98,11 @@ Every item below has a runnable repro in `scripts/repro/` (or `scripts/`) and th
 ### S6 — `render()` prints the exact query string the builder sends
 - **Tested**: `render(expression)` on our compound queries (`scripts/print-queries.ts`).
 - **Result**: identical to what we document in `/arkiv/schema.md`, so the schema shows literal queries.
+
+### S7 — Cursor pagination walks the same set
+- **Tested**: the publisher's claims read once with `limit(200)` and walked with `limit(2)` + `cursor()`.
+- **Expected → result**: same 8 claims, 4 pages, 0 duplicates (`cursor-walk.log`).
+
+### S8 — Key rotation: create + delete of a `readonly` record in one batch
+- **Tested**: the root signs `executeBatch({ creates: [new project record], deletes: [old record] })`; then a second wallet re-publishes the endpoints.
+- **Expected → result**: one transaction; right after it, the old publisher's claim on `https://app.demo-swap.example` reads `REVOKED` (`rotation.log`). `readonly` blocked edits but not the owner's delete. The docs say nothing about that combination, so the delete working is a result we measured, not one we read (the undocumented part is F7). The reads after it in the same log hit the anonymous budget (F6: HTTP 429 `ANON_COST_LIMITED`), and the CLI reported them immediately instead of hanging (`retryCount: 0`).

@@ -13,6 +13,7 @@ Officially checks, right before you sign, that the contract or spender your wall
     --root 0x70E5d4986A251a5173Acf59c86178e144B62864E
   # → TRANSACTION FORGED: the spender 0xbad0…0bad was "published" under Demo Swap's name by a key that is not Demo Swap's
   ```
+- **Outside the page:** the in-page guard is a demo; the trust path is the CLI above plus `--anchor-url` (root key confirmed by the project's GitHub file). Threat model and comparison with wallet alerts: [Security](#security-what-to-trust-and-what-not-threat-model).
 - Data contract [`/arkiv/schema.md`](arkiv/schema.md) · Friction report [`/arkiv/friction.md`](arkiv/friction.md) · On-chain evidence [`/arkiv/evidence.md`](arkiv/evidence.md) · Feature check [`/arkiv/features.md`](arkiv/features.md) · Spec [`SPEC.md`](SPEC.md)
 - Tracks: **Security** (primary), Censorship Resistance, Open Source. All demo data is synthetic: a fictional "Demo Swap" on `*.example` domains with made-up addresses.
 
@@ -31,7 +32,7 @@ The pattern repeats because the victim does everything right: they type the real
 **What changes from day one.**
 - *For the person signing:* they pin the project's root key once, from a source they trusted before any incident (the project's GitHub or ENS name; the app remembers it, and `?root=0x…` links share it). From then on, every approve they paste or click through the guard is checked against what that key published, and a drainer on the real domain shows **FORGED** or **not published**.
 - *For the project:* one command on its next deploy (`officially publish …`), and its official sites, handles and contracts, plus any incident it raises, become checkable by anyone without trusting the project's DNS or its X account: from the web page, from scripts and bots (the CLI exits 0 only on a clean pass), and at the moment of signing. [`guardProvider`](src/adapters/wallet/guard.ts) wraps any EIP-1193 wallet provider so `eth_sendTransaction` and `eth_signTypedData_v4` are checked before the wallet shows them; the demo's Approve button goes through exactly that wrapper, and the hijacked approve is refused before the (demo) wallet ever sees it.
-- *Who is still cut off:* someone who never pinned the project's key before the hijack. That is why the pin is offered from the project's GitHub/ENS anchors, and why a `?root=` link is never applied without the user confirming it.
+- *Who is still cut off:* someone who never pinned the project's key before the hijack. The CLI's `--anchor-url` lets that person confirm the key against the project's GitHub file in one step (see [Security](#security-what-to-trust-and-what-not-threat-model)); a `?root=` link is never applied without the user confirming it.
 
 ## Per track
 
@@ -79,12 +80,12 @@ Every row is verified in the code **and** on Tiramisu by `npx tsx scripts/check-
 |---|---|---|
 | Typed attributes vs payload | Lookups by `target_hash` (bytes32); `severity` stored as i32 and `publisher` as addr; labels and advice stay in the payload | Index only what is filtered |
 | Compound query with `$creator` in `where()` | One read checks a whole transaction (origin + contract + spender) | Spam claims by other keys cannot crowd a trusted claim out of the 200-result page |
-| `createdBy()` + cursor pagination | Project records of the pinned root; a publisher renews all its claims | Authorship enforced by the node |
+| `createdBy()` + cursor pagination | Anyone can list every registered project, page by page with no backend of ours; a team renews all its endpoints with one command | Authorship enforced by the node |
 | Entity Expiration per type | Lease countdown on each verdict; retiring endpoints lapse | Project record 365 d · endpoint 30 d · incident 24 h / 72 h / 7 d by severity |
 | Lifetime Extension as a lease | Endpoints stay official only while renewed on each deploy | Forgotten endpoints stop being official on their own |
 | `readonly` + `permissionlessExtension` | Claims cannot be edited; anyone can keep a warning alive | A stolen key cannot rewrite history; a dark team cannot silence a warning |
 | `$creator` vs `$owner`, ownership transfer | Verdicts name the creating key; incidents show owner `0x…dEaD` | Trust from the immutable creator; burned ownership means nobody can retract a warning |
-| Atomic batch + `predictEntityKeys` salt | An incident appears already burned: there is no block in which a stolen key could delete it | Create and transfer land in the same block |
+| Atomic batch + `predictEntityKeys` salt | A project's warning cannot be deleted by anyone, not even a thief holding its key: there is no moment in which it could be | Create and transfer land in the same block |
 | Key rotation as one batch (create + delete of a readonly record) | Claims by the retired publisher read `REVOKED`; incidents it raised before retirement still restrict | Never zero or two authorized publishers ([log](arkiv/repro-logs/rotation.log)) |
 | `watchEntityEvents` over WebSocket, no `fromBlock` | A new incident flips open checks to INCIDENT without a reload | Push arrived 817 ms after the write ([log](arkiv/repro-logs/ws-incident-latency.log)); polling would spend the RPC budget every judge shares |
 
@@ -97,7 +98,7 @@ Every row is verified in the code **and** on Tiramisu by `npx tsx scripts/check-
    **On-chain proof of the rotation:** transaction [`0x34ac5dc2…86df4`](https://tiramisu.explorer.arkiv.network/tx/0x34ac5dc20adf43f81048c2a558c5aa455f2087b40b20e87c9abd8beb9d286df4) (block 462,115, signed by the root `0x70E5…864E`, status 1) created the new project record, entity key `0x638422a2f085ecfa06d7857143fb357f282ce56a32b9ef65bc9464b71a43cb23`, and deleted the old one in the same batch. Verdict today, read with the pinned root and no other input: `REVOKED  https://docs.demo-swap.example` ("Published by 0x04a1…438f, a key the project's root has rotated away from"). Re-run it yourself: `sh scripts/repro/verify-rotation.sh` ([log](arkiv/repro-logs/verify-rotation.log)).
 5. **Incidents only restrict.** They mark targets unsafe, never add or redirect. Their text renders without links, they are burned on creation, and anyone can keep them alive.
 
-Verdicts: `OFFICIAL` · `PROBATION` · `INCIDENT` · `FORGED` · `REVOKED` · `UNLISTED` · `UNPINNED`. A transaction is as safe as the least safe address it authorizes. Decoded today: `approve`, `increaseAllowance`, `setApprovalForAll`, Permit2 `approve`, and EIP-2612 `Permit` typed data.
+Verdicts: `OFFICIAL` · `PROBATION` · `INCIDENT` · `FORGED` · `REVOKED` · `UNLISTED` · `UNPINNED` · `UNVERIFIED_KEY` (only with `--anchor-url`: the root key is not confirmed by the project's GitHub file). A transaction is as safe as the least safe address it authorizes. Decoded today: `approve`, `increaseAllowance`, `setApprovalForAll`, Permit2 `approve`, and EIP-2612 `Permit` typed data.
 
 ## Reproduce it
 
@@ -146,10 +147,49 @@ OFFICIALLY_PUBLISHER_KEY=… officially incident --target https://old.yourprojec
 
 Every entity, a link to its explorer page (which shows its creation transaction) and its expiry: [`arkiv/evidence.md`](arkiv/evidence.md). Entities that lapse before 24 October on purpose: three incidents (24 h / 72 h / 7 d lives) and the endpoints published with a scheduled retirement (20, 21, 22 October). Their keys, expiries and explorer pages (each shows the creation transaction) are in [`evidence.md`](arkiv/evidence.md); the real Entity Expiration blocks, read from the chain, are in [`expiry-check.log`](arkiv/repro-logs/expiry-check.log) (`npx tsx scripts/repro/expiry-check.ts`). The long-lived ones (project record, current endpoints) end on 11 Nov 2026 or later. Logs of the README commands: [`readme-commands.log`](arkiv/repro-logs/readme-commands.log). If the public RPC rate-limits your IP (anonymous budget ≈ 100 requests), the app falls back to [`snapshot.json`](public/snapshot.json) and says so.
 
+## Security: what to trust, and what not (threat model)
+
+**Honest framing: the in-page guard is a demo. The trust path is the CLI and the anchor.** A page that has been hijacked can simply leave the guard out, so a guard that lives *inside* the attacked page cannot be the thing you rely on. Two things work without it:
+
+1. **Outside the page.** Copy what your wallet's confirmation window shows (contract `to`, the hex `data`, the chain, the site name) into the CLI. It never touches the page; it asks Arkiv and the project's GitHub directly.
+2. **A root key confirmed outside Arkiv (reduces trust-on-first-use).** The check is only as good as the root key you start from. Instead of typing a 42-character key you trust blindly, give the project's own GitHub file as an anchor: `--anchor-url github:<owner>/<repo>/<path>/officially.json`. The verdict is `OFFICIAL` only if that file (served by the project's GitHub account, a different credential from any Arkiv key) names **the same root key**; if it names another key or cannot be read, the verdict is **`UNVERIFIED_KEY`** and exits 1. What you must know independently shrinks from "a hex key" to "the project's GitHub repository", which you can read, star or find from the project's docs.
+
+```text
+# Demo Swap (synthetic) publishes its root key in this repo: demo/.well-known/officially.json
+$ officially check-tx --to 0x5eed…aaaa --chain 11155111 --origin https://app.demo-swap.example \
+      --root $R --anchor-url github:Ryugi62/officially/demo/.well-known/officially.json --data 0x095ea7b3…bad…ffff
+TRANSACTION FORGED                      # exit 1 — the page said "approve the router"; the calldata names 0xbad…
+origin    OFFICIAL  https://app.demo-swap.example      … key confirmed by anchor: https://raw.githubusercontent.com/Ryugi62/officially/main/demo/.well-known/officially.json
+spender   FORGED    eip155:11155111:0xbad0…0bad        Claimed by 0xcb70…8d6e, which is not a key of the pinned project.
+
+$ …same command, anchor file missing:   UNVERIFIED_KEY (exit 1) — root key NOT confirmed by an independent anchor
+```
+Full runs, copied from the terminal on 14 Oct 2026: [`out-of-page-check.log`](arkiv/repro-logs/out-of-page-check.log) (a good approve, the swapped spender, a lookalike site) and [`anchor.log`](arkiv/repro-logs/anchor.log) (anchor confirmed, absent, and no anchor at all). Tests: [`tests/domain/anchor.test.ts`](tests/domain/anchor.test.ts) (mismatch beats confirmation; unreadable is never "confirmed").
+
+| Threat | Covered? |
+|---|---|
+| Hijacked frontend swaps the spender | Yes, if you check the wallet window's values with the CLI (or the guard is actually installed in your wallet flow). The in-page demo guard is **not** a defence against a page that removes it. |
+| You never pinned the project before the incident | Reduced, not removed: one independent fact (the project's GitHub repo) replaces a blind key paste. If an attacker also controls the project's GitHub, nothing here helps. |
+| Theft of the **root** key | No. Rotation, anchors and the 48 h hold only bound a stolen *publisher* key. |
+| Checking is manual today | Yes — it is a copy-paste step. Wallet integration is the next step, not something this entry has. |
+
+**How this differs from the security alerts already in wallets.** Both are warnings shown at signing time; the difference is whose statement you are shown. Sources read on 14 Oct 2026.
+
+| | MetaMask security alerts | Rabby | Officially |
+|---|---|---|---|
+| Who decides "bad" | MetaMask's alerts come from "on-chain analysis, ecosystem intelligence, and security partners including Blockaid", using "known phishing domains and scam reports", "impersonation signals" ([MetaMask Help Center](https://support.metamask.io/configure/wallet/security-alerts/), read 14 Oct 2026) | Rabby flags "risky or malicious" approvals and labels scam transactions in history ([Rabby Help Center, 21 Mar 2026](https://support.rabby.io/en/articles/14150699-scam-tx-labels-what-they-mean-for-your-wallet-s-security); [best practices](https://support.rabby.io/en/articles/14150663-best-practices-for-staying-safe-in-web3)). The help pages do not state the data source. | The **project's own key**, read from Arkiv by `$creator`. No vendor in the loop. |
+| Brand-new drainer on the real domain | Unknown until a vendor flags it ("detects signals associated with scams") | same (vendor/detector side; source not stated) | Not published by the project's key → `FORGED`/`UNLISTED` on first sight |
+| Positive statement "this is official" | A "Verified" badge that MetaMask grants; the page itself says absence of it "does not automatically mean something is unsafe" | not documented in the pages read | `OFFICIAL` only for what the project's key published, with a lease that lapses |
+| Project-raised incident visible to wallets | Not described | Not described | Yes: burned, extendable by anyone |
+| Works for a small project nobody has listed | Only if the vendor covers it | same | Yes, if it publishes (one command) |
+| Where it runs | Inside the wallet, automatic, on 20+ networks | Inside the wallet, automatic | Today: CLI + demo page, manual. **Wallets are ahead on convenience and coverage.** |
+
+Our claim is narrow: Officially is the project-authored layer a wallet could consume, not a replacement for wallet-built-in alerts.
+
 ## Limits
 
 - Throughput: one check is ≤ 3 RPC requests, p50 664 ms / p90 1,598 ms over 10 checks on the public RPC ([log](arkiv/repro-logs/measure-latency.log)). The anonymous RPC budget (≈ 100 requests per IP, reported-issues #17) allows about 30 checks per IP before an access key is needed.
-- Trust starts with pinning the right root key (trust on first use). Officially shows the anchors the project published (`demo/.well-known/officially.json`, GitHub, ENS). Pin **before** an incident, not during one.
+- Trust starts with the right root key. `--anchor-url` confirms it against the project's GitHub file (see Security above); without an anchor the CLI says nothing about the key and the answer is pin-only (trust on first use). ENS text records are a documented anchor kind but are not read yet. Pin **before** an incident, not during one.
 - Decoded: `approve`, `increaseAllowance`, `setApprovalForAll`, Permit2 `approve`, and typed data whose `primaryType` is `Permit` (EIP-2612) or `PermitSingle` (Permit2). Anything else (multicall, Safe `execTransaction`, ERC-4337 UserOps, EIP-7702 authorizations, `wallet_sendCalls`, Permit2 batches, Seaport orders, any other typed data) is checked on the called or verifying contract only and flagged **"not decoded"**: never a clean pass in the app or the wallet guard, exit code 1 in the CLI.
 - `readonly` stops edits, not deletion: the owner can delete its own endpoint claims. A stolen **publisher** key can therefore make endpoints disappear, which fails safe (everything reads "not published", nothing reads official) until the root rotates. It cannot delete incidents (owned by `0x…dEaD`), cannot shorten them (the node refuses an extension that would shorten a life — [log](arkiv/repro-logs/shorten-incident.log)), and a rotation does not silence the warnings a key raised while it was trusted. The reverse also holds: warnings a retired key raises *after* its retirement (or after the block the root declares it compromised, `rotate --compromised-since`) are shown but never restrict, so a thief cannot grief the project with burned, community-extendable warnings.
 - Not defended: theft of the **root** key; malicious calldata that pays an official router to send funds elsewhere; wallets that do not expose the request before signing.

@@ -1,0 +1,45 @@
+# Run 14 Oct 2026, outside any web page: values copied from a wallet confirmation window
+$ officially check-tx --to 0x5eed00000000000000000000000000000000aaaa --chain 11155111 --origin https://app.demo-swap.example --root $R --anchor-url $ANCHOR --data <approve(router, max)>
+TRANSACTION OFFICIAL
+origin    OFFICIAL  https://app.demo-swap.example
+          Published by 0x7169173d0d00db282f385fee8bece2d67d10c6f0, a key the pinned root trusts.
+          The lease is live; it lapses unless the project renews it.
+          key confirmed by anchor: https://raw.githubusercontent.com/Ryugi62/officially/main/demo/.well-known/officially.json
+contract  OFFICIAL  eip155:11155111:0x5eed00000000000000000000000000000000aaaa
+          Published by 0x7169173d0d00db282f385fee8bece2d67d10c6f0, a key the pinned root trusts.
+          The lease is live; it lapses unless the project renews it.
+          key confirmed by anchor: https://raw.githubusercontent.com/Ryugi62/officially/main/demo/.well-known/officially.json
+spender   OFFICIAL  eip155:11155111:0x5eed00000000000000000000000000000000a11c
+          Published by 0x7169173d0d00db282f385fee8bece2d67d10c6f0, a key the pinned root trusts.
+          The lease is live; it lapses unless the project renews it.
+          key confirmed by anchor: https://raw.githubusercontent.com/Ryugi62/officially/main/demo/.well-known/officially.json
+exit 0
+
+$ ... --data <approve(0xbad…bad, max)>   # the hijacked page swapped the spender
+TRANSACTION FORGED
+origin    OFFICIAL  https://app.demo-swap.example
+          Published by 0x7169173d0d00db282f385fee8bece2d67d10c6f0, a key the pinned root trusts.
+          The lease is live; it lapses unless the project renews it.
+          key confirmed by anchor: https://raw.githubusercontent.com/Ryugi62/officially/main/demo/.well-known/officially.json
+contract  OFFICIAL  eip155:11155111:0x5eed00000000000000000000000000000000aaaa
+          Published by 0x7169173d0d00db282f385fee8bece2d67d10c6f0, a key the pinned root trusts.
+          The lease is live; it lapses unless the project renews it.
+          key confirmed by anchor: https://raw.githubusercontent.com/Ryugi62/officially/main/demo/.well-known/officially.json
+spender   FORGED    eip155:11155111:0xbad0000000000000000000000000000000000bad
+          Claimed by 0xcb7074f79e887426eba3ae9039f0b2ed620a8d6e, which is not a key of the pinned project.
+          Its name and labels are self-declared and do not count.
+exit 1
+
+$ ... same calldata, a lookalike origin the wallet shows
+TRANSACTION UNLISTED
+origin    UNLISTED  https://app.demo-swap-airdrop.example
+          The pinned project has not published this target (or its lease lapsed).
+contract  OFFICIAL  eip155:11155111:0x5eed00000000000000000000000000000000aaaa
+          Published by 0x7169173d0d00db282f385fee8bece2d67d10c6f0, a key the pinned root trusts.
+          The lease is live; it lapses unless the project renews it.
+          key confirmed by anchor: https://raw.githubusercontent.com/Ryugi62/officially/main/demo/.well-known/officially.json
+spender   OFFICIAL  eip155:11155111:0x5eed00000000000000000000000000000000a11c
+          Published by 0x7169173d0d00db282f385fee8bece2d67d10c6f0, a key the pinned root trusts.
+          The lease is live; it lapses unless the project renews it.
+          key confirmed by anchor: https://raw.githubusercontent.com/Ryugi62/officially/main/demo/.well-known/officially.json
+exit 1

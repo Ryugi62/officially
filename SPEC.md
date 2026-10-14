@@ -42,7 +42,7 @@ The essence is **not** "another phishing blocklist" (a vendor's opinion, updated
 | Pin | A user's local record of which root key is project X (trust on first use, checked against anchors). | `Pin` |
 | Probation | A trusted claim younger than 48 hours (86,400 blocks): shown as published but not yet official, giving the team time to notice a stolen publisher key. | `PROBATION` |
 | Transaction check | Decoding a wallet request into the addresses it authorizes (`to`, spender, operator) plus the requesting origin, and checking each. | `checkTransaction` |
-| Verdict | Result of a check: `OFFICIAL`, `PROBATION`, `INCIDENT`, `FORGED`, `REVOKED`, `UNLISTED`, `UNPINNED`. | `Verdict` |
+| Verdict | Result of a check: `OFFICIAL`, `PROBATION`, `INCIDENT`, `FORGED`, `REVOKED`, `UNLISTED`, `UNPINNED`, `UNVERIFIED_KEY`. | `Verdict` |
 
 ## 4. Bounded context · domain model
 - Context: **Endpoint attestation** (one context). Arkiv is an adapter behind ports.
@@ -101,6 +101,8 @@ A transaction verdict is the worst of its parts, in the order INCIDENT > FORGED 
 - AC-23 wallet guard: `guardProvider` refuses `eth_sendTransaction` / `eth_signTypedData_v4` that are not a clean pass with EIP-1193 code 4001 before the inner provider is called.
 - AC-24 griefing: incidents by a retired key restrict only if created before its retirement block (or the root's `compromisedSinceBlock`); history survives several rotations.
 - AC-25 pins: a `?root=` link is offered, never applied without the user's click.
+- AC-26 anchor (TOFU): Given `--root R` and `--anchor-url U`, When the document at U states `officially.rootKey == R`, Then an OFFICIAL/PROBATION verdict keeps its status and carries `key confirmed by anchor: <U>`. When U names another key (even if a second anchor confirms) or cannot be read, Then OFFICIAL/PROBATION become `UNVERIFIED_KEY` (exit 1). INCIDENT/FORGED/REVOKED/UNLISTED are never softened. `http://` anchors are refused. Anchors are fetched by the CLI only, never by the verdict rules (`src/domain/anchor.ts` is pure).
+- AC-27 out of page: `check-tx` takes the values shown in a wallet confirmation window (`--to`, `--data`, `--chain`, `--origin`) and reproduces the in-page verdict; logs in `arkiv/repro-logs/out-of-page-check.log`.
 - AC-16 no secrets / personal data: the seed and every writer reject payloads containing a private-key-shaped hex string or an email/phone pattern.
 
 ## 7. Architecture (Clean) — dependencies point inward
@@ -139,6 +141,7 @@ Ports ↔ adapters: `AttestationReader` ↔ `ArkivReader` (public client, HTTP) 
 - Open the deployed URL in a logged-out browser at 390 px and 1280 px; capture screenshots; verify a live incident flips the verdict without reload.
 
 ## 10. Change log
+- v0.6 2026-10-14 TOFU anchor (AC-26) and out-of-page CLI path (AC-27); README threat model: in-page guard is a demo, trust path is CLI + anchor.
 - v0.5 2026-10-14 AC-5 static source test; expiry-check repro (real Entity Expiration blocks).
 - v0.4 2026-10-14 UI acceptance section; button/banner/status text contrast >= 4.5:1 (ui_audit fail 0).
 - v0.1 2026-10-12 first version (idea chosen by blind scoring).
