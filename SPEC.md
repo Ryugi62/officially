@@ -121,12 +121,25 @@ Ports ↔ adapters: `AttestationReader` ↔ `ArkivReader` (public client, HTTP) 
 - Rate-limit behaviour (429) surfaces as a visible message, never a silent hang (timeout 15 s per read).
 - Accessibility: verdict conveyed by text + icon, not color alone; works at 390 px width.
 
+## 8b. UI 수용기준 — UI acceptance criteria (notes/원칙-디자인 checklist 10, applied to the web app)
+1. Mobile first: no horizontal scroll at 390 px and 1280 px; viewport meta present; zoom not blocked.
+2. One screen, one question: one input group (target or transaction), one primary action.
+3. Type: body >= 16 px, nothing under 12 px, weight >= 400, line height >= 1.5.
+4. Spacing: 4/8 grid, rounded cards >= 14 px, side gutters >= 16 px.
+5. Primary button >= 52 px high, every touch target >= 44 px.
+6. Verdict first: the result card starts with the big verdict, evidence sits below.
+7. Evidence folded: anchors, queries and keys in `<details>`.
+8. Microcopy: the cause and what to do in one line, no raw error codes.
+9. Colour: one brand colour plus status colours (ok / warn / no / idle), text >= 4.5:1 in light and dark, visible focus. Button text on `#1b64da` (5.4:1). `ui_audit.py` fail 0; known warns: colour families 5 > 4 (status colours carry meaning: official / hold / forged / idle), spacing 64 % on the 4-grid (inherited 2/6/14 px nudges).
+10. No external fonts or CDN; loading and error states are shown.
+
 ## 9. Physical verification (beyond unit tests)
 - Seed synthetic demo projects on Tiramisu; record every tx hash and entity key in `arkiv/evidence.md`.
 - Run `scripts/check-features` (code + chain), `scripts/measure-latency` (≥ 20 checks), and every `scripts/repro/*` against Tiramisu; commit logs.
 - Open the deployed URL in a logged-out browser at 390 px and 1280 px; capture screenshots; verify a live incident flips the verdict without reload.
 
 ## 10. Change log
+- v0.4 2026-10-14 UI acceptance section; button/banner/status text contrast >= 4.5:1 (ui_audit fail 0).
 - v0.1 2026-10-12 first version (idea chosen by blind scoring).
 - v0.3 2026-10-12 mock-judge rounds 1–2: severity lifetimes, keep-alive never shortens, publisher history with cut-offs, typed-data allowlist, EIP-1193 guard, pin confirmation, snapshot never a clean pass.
 - v0.2 2026-10-12 red-team pivot: the headline check moves to the signing path (UC-9), 48 h probation, restrict-only incidents, trusted-first queries; synthetic demo projects only (no real project signed by our key).
