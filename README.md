@@ -74,20 +74,27 @@ The pattern repeats because the victim does everything right: they type the real
 
 ## How Officially uses Arkiv
 
-Every row is verified in the code **and** on Tiramisu by `npx tsx scripts/check-features.ts` (log: [`arkiv/repro-logs/check-features.log`](arkiv/repro-logs/check-features.log); full table with code links: [`arkiv/features.md`](arkiv/features.md)).
+Four things change for the person about to sign. Each is verified in the code **and** on Tiramisu by `npx tsx scripts/check-features.ts` (log: [`arkiv/repro-logs/check-features.log`](arkiv/repro-logs/check-features.log); full table with code links: [`arkiv/features.md`](arkiv/features.md)).
+
+| Feature | What the user sees | Why |
+|---|---|---|
+| Compound query with `$creator` in `where()` | One read checks a whole transaction (origin + contract + spender) | Spam claims by other keys cannot crowd a trusted claim out of the 200-result page |
+| Lifetime Extension as a lease | Endpoints stay official only while renewed on each deploy | Forgotten endpoints stop being official on their own |
+| `readonly` + `permissionlessExtension` | Claims cannot be edited; anyone can keep a warning alive | A stolen key cannot rewrite history; a dark team cannot silence a warning |
+| `watchEntityEvents` over WebSocket, no `fromBlock` | A new incident flips open checks to INCIDENT without a reload | Push arrived 817 ms after the write ([log](arkiv/repro-logs/ws-incident-latency.log)); polling would spend the RPC budget every judge shares |
+
+### Internal features
+
+The rest of the Arkiv features the claims above stand on. They are not extra product surface: same check, same script, moved here so the four rows above are what a user notices.
 
 | Feature | What the user sees | Why |
 |---|---|---|
 | Typed attributes vs payload | Lookups by `target_hash` (bytes32); `severity` stored as i32 and `publisher` as addr; labels and advice stay in the payload | Index only what is filtered |
-| Compound query with `$creator` in `where()` | One read checks a whole transaction (origin + contract + spender) | Spam claims by other keys cannot crowd a trusted claim out of the 200-result page |
 | `createdBy()` + cursor pagination | Anyone can list every registered project, page by page with no backend of ours; a team renews all its endpoints with one command | Authorship enforced by the node |
 | Entity Expiration per type | Lease countdown on each verdict; retiring endpoints lapse | Project record 365 d · endpoint 30 d · incident 24 h / 72 h / 7 d by severity |
-| Lifetime Extension as a lease | Endpoints stay official only while renewed on each deploy | Forgotten endpoints stop being official on their own |
-| `readonly` + `permissionlessExtension` | Claims cannot be edited; anyone can keep a warning alive | A stolen key cannot rewrite history; a dark team cannot silence a warning |
 | `$creator` vs `$owner`, ownership transfer | Verdicts name the creating key; incidents show owner `0x…dEaD` | Trust from the immutable creator; burned ownership means nobody can retract a warning |
 | Atomic batch + `predictEntityKeys` salt | A project's warning cannot be deleted by anyone, not even a thief holding its key: there is no moment in which it could be | Create and transfer land in the same block |
 | Key rotation as one batch (create + delete of a readonly record) | Claims by the retired publisher read `REVOKED`; incidents it raised before retirement still restrict | Never zero or two authorized publishers ([log](arkiv/repro-logs/rotation.log)) |
-| `watchEntityEvents` over WebSocket, no `fromBlock` | A new incident flips open checks to INCIDENT without a reload | Push arrived 817 ms after the write ([log](arkiv/repro-logs/ws-incident-latency.log)); polling would spend the RPC budget every judge shares |
 
 ## The model, in five rules
 
