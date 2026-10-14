@@ -1,7 +1,7 @@
 {
   "note": "Snapshot of the synthetic Demo Swap entities, shown only if the public Arkiv RPC rate-limits the viewer. Regenerate with npx tsx scripts/export-evidence.ts.",
-  "block": "555898",
-  "takenAt": "2026-10-14T07:05:49.335Z",
+  "block": "557414",
+  "takenAt": "2026-10-14T07:56:21.975Z",
   "rotation": {
     "txHash": "0x34ac5dc20adf43f81048c2a558c5aa455f2087b40b20e87c9abd8beb9d286df4",
     "block": 462115,
@@ -11,20 +11,25 @@
   },
   "records": [
     {
-      "key": "0x638422a2f085ecfa06d7857143fb357f282ce56a32b9ef65bc9464b71a43cb23",
+      "key": "0xc99e269e42df2cacd300344747d72569c5842f81db58191fcf4d4fbc1b50bdbd",
       "creator": "0x70e5d4986a251a5173acf59c86178e144b62864e",
       "owner": "0x70e5d4986a251a5173acf59c86178e144b62864e",
-      "createdAtBlock": "462115",
-      "expiresAtBlock": "16230115",
+      "createdAtBlock": "556779",
+      "expiresAtBlock": "16324779",
       "entity": "project",
       "slug": "demo-swap",
       "name": "Demo Swap (synthetic)",
       "publisher": "0x7169173d0d00db282f385fee8bece2d67d10c6f0",
-      "revokes": "0x04a16da7180594ef2dffcf70431e809432ce438f",
+      "previousPublishers": [
+        {
+          "address": "0x04a16da7180594ef2dffcf70431e809432ce438f",
+          "retiredAtBlock": "462115"
+        }
+      ],
       "anchors": [
         {
           "kind": "github",
-          "ref": "https://github.com/Ryugi62/officially/blob/main/demo/.well-known/officially.json"
+          "ref": "https://github.com/Ryugi62/demo-swap-site/blob/main/.well-known/officially.json"
         }
       ]
     }
@@ -251,7 +256,7 @@
       "creator": "0x04a16da7180594ef2dffcf70431e809432ce438f",
       "owner": "0x000000000000000000000000000000000000dead",
       "createdAtBlock": "461897",
-      "expiresAtBlock": "764297",
+      "expiresAtBlock": "1018326",
       "entity": "incident",
       "targetHash": "0x796b7358526925653ff9c93e5378235cede1cf1fefa3c3625a12dcb53b079b06",
       "target": "https://demo-swap-airdrop.example",
@@ -265,7 +270,7 @@
       "creator": "0x04a16da7180594ef2dffcf70431e809432ce438f",
       "owner": "0x000000000000000000000000000000000000dead",
       "createdAtBlock": "460708",
-      "expiresAtBlock": "590308",
+      "expiresAtBlock": "1018326",
       "entity": "incident",
       "targetHash": "0x796b7358526925653ff9c93e5378235cede1cf1fefa3c3625a12dcb53b079b06",
       "target": "https://demo-swap-airdrop.example",
@@ -279,7 +284,7 @@
       "creator": "0x04a16da7180594ef2dffcf70431e809432ce438f",
       "owner": "0x000000000000000000000000000000000000dead",
       "createdAtBlock": "460631",
-      "expiresAtBlock": "590260",
+      "expiresAtBlock": "1018326",
       "entity": "incident",
       "targetHash": "0xab31468cb94c21ab68d4d1d9b72537aec44ef2c9e7e624809864e4e0c7cbdd03",
       "target": "https://old.demo-swap.example",
