@@ -15,6 +15,9 @@ describe("CLI args", () => {
     expect(exitCodeFor("OFFICIAL")).toBe(0)
     for (const s of ["PROBATION", "INCIDENT", "FORGED", "REVOKED", "UNLISTED", "UNPINNED", "UNVERIFIED_KEY"] as const) expect(exitCodeFor(s)).toBe(1)
   })
+  it("--paste is a boolean flag (the text comes from stdin)", () => {
+    expect(parseArgs(["check-tx", "--paste", "--root", "0x11"]).flags).toEqual({ paste: true, root: "0x11" })
+  })
   it("rejects an unknown command", () => {
     expect(() => parseArgs(["frobnicate"])).toThrow(/Unknown command/)
   })

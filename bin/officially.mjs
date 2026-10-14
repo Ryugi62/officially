@@ -30366,6 +30366,50 @@ function viemEnsResolver(rpc = process.env.OFFICIALLY_ENS_RPC) {
 	}) };
 }
 //#endregion
+//#region src/domain/paste.ts
+var ADDR$1 = /0x[0-9a-fA-F]{40}(?![0-9a-fA-F])/;
+var TO_LABEL = /(?:^|[\n,{"'\s])(?:to|interacting with|contract(?: address)?|spender)["']?\s*[:=]\s*["']?(0x[0-9a-fA-F]{40})(?![0-9a-fA-F])/gi;
+var NAMED_CHAINS = {
+	ethereum: 1,
+	mainnet: 1,
+	sepolia: 11155111,
+	base: 8453,
+	optimism: 10,
+	arbitrum: 42161,
+	polygon: 137
+};
+function chainOf(text) {
+	const m = /chain\s*(?:id)?["']?\s*[:=(]?\s*["']?(0x[0-9a-fA-F]+|\d+)/i.exec(text);
+	if (m) return Number(m[1]);
+	const n = /network\s*[:=]\s*([a-z]+)/i.exec(text);
+	return n ? NAMED_CHAINS[n[1].toLowerCase()] : void 0;
+}
+function originOf(text) {
+	const u = /https:\/\/[^\s"'<>]+/i.exec(text);
+	if (u) try {
+		return new URL(u[0]).origin;
+	} catch {}
+	const h = /(?:request from|site|origin|website)\s*[:=]?\s*([a-z0-9][a-z0-9.-]*\.[a-z]{2,})/i.exec(text);
+	return h ? `https://${h[1].toLowerCase()}` : void 0;
+}
+function parsePastedTx(text) {
+	const tos = new Set([...text.matchAll(TO_LABEL)].map((m) => m[1].toLowerCase()));
+	if (tos.size > 1) throw new Error("ambiguous: several different contract addresses under to/contract labels — paste one request");
+	const loose = (tos.size ? [...text.matchAll(TO_LABEL)][0][1] : void 0) ?? (new Set(text.match(new RegExp(ADDR$1, "g"))).size === 1 ? ADDR$1.exec(text)?.[0] : void 0);
+	const hex = text.match(/0x(?:[0-9a-fA-F]{2}){4,}(?![0-9a-fA-F])/g)?.filter((h) => h.length !== 42).sort((a, b) => b.length - a.length)[0];
+	const chainId = chainOf(text);
+	const out = { missing: [] };
+	if (loose) out.to = loose;
+	if (hex) out.data = hex;
+	if (chainId !== void 0 && Number.isFinite(chainId)) out.chainId = chainId;
+	const origin = originOf(text);
+	if (origin) out.origin = origin;
+	if (!out.to) out.missing.push("to");
+	if (!out.data) out.missing.push("data");
+	if (out.chainId === void 0) out.missing.push("chain");
+	return out;
+}
+//#endregion
 //#region src/domain/transaction.ts
 var UndecodableRequestError = class extends Error {
 	constructor(message) {
@@ -31061,7 +31105,8 @@ var MULTI = /* @__PURE__ */ new Set([
 var BOOL = /* @__PURE__ */ new Set([
 	"json",
 	"project-wide",
-	"help"
+	"help",
+	"paste"
 ]);
 function parseArgs(argv) {
 	const [cmd = "help", ...rest] = argv;
@@ -31101,6 +31146,9 @@ Read (no wallet):
   officially check-tx --to <0x> --data <0x…> --chain <id> [--origin <url>] --root <projectRootKey> [--anchor-url …]… [--json]
       --anchor-url: a place OUTSIDE Arkiv where the project states its root key (its own GitHub repo's .well-known/officially.json, or ens:<name> whose text record officially.rootKey names the key — read on Sepolia).
       With it, OFFICIAL needs the anchor to name the same root key; otherwise the verdict is UNVERIFIED_KEY.
+  officially check-tx --paste --root <projectRootKey> [--anchor-url …]… [--json] < wallet-window.txt
+      --paste (or piping text in without --to): paste what the wallet window shows — site, contract, chain, hex data — one step, no field-by-field typing.
+      Flags (--to --data --chain --origin) override what the text says.
   officially projects [--json]
   officially watch --root <projectRootKey>   live: prints every entity the project's keys create (run it on the team side:
                                              a new endpoint nobody published = stolen publisher key; rotate within the 48 h hold)
@@ -31143,6 +31191,11 @@ async function anchorEvidence(a, root) {
 	if (!root) throw new Error("--anchor-url needs --root (the key to confirm)");
 	return confirmRootKey(new RoutingAnchorFetcher(new EnsAnchorFetcher(viemEnsResolver()), new HttpAnchorFetcher()), root, refs.map(anchorUrl));
 }
+async function readStdin() {
+	let t = "";
+	for await (const c of process.stdin) t += c;
+	return t;
+}
 var big = (_, v) => typeof v === "bigint" ? v.toString() : v;
 function printVerdict(v, label) {
 	console.log(`${label ? `${label.padEnd(9)} ` : ""}${v.status.padEnd(9)} ${v.target ?? ""}`);
@@ -31174,13 +31227,24 @@ async function main(argv) {
 			const origin = opt(a, "origin");
 			const root = opt(a, "root");
 			const ev = await anchorEvidence(a, root);
+			const pasted = a.flags.paste === true || a.flags.to === void 0 && !process.stdin.isTTY ? parsePastedTx(await readStdin()) : void 0;
+			const to = opt(a, "to") ?? pasted?.to;
+			const data = opt(a, "data") ?? pasted?.data;
+			const chainId = opt(a, "chain") !== void 0 ? Number(opt(a, "chain")) : pasted?.chainId;
+			const org = origin ?? pasted?.origin;
+			const lack = [
+				!to && "to",
+				!data && "data",
+				chainId === void 0 && "chain"
+			].filter(Boolean);
+			if (lack.length) throw new Error(`could not find ${lack.join(", ")} in the pasted text — pass it with --${lack[0] === "chain" ? "chain" : lack[0]}`);
 			const tv0 = await checkTransaction(reader(), {
 				request: {
-					to: str(a, "to"),
-					data: str(a, "data"),
-					chainId: Number(str(a, "chain"))
+					to,
+					data,
+					chainId
 				},
-				...origin && { origin },
+				...org && { origin: org },
 				...root && { pin: { rootKey: root } }
 			});
 			const tv = ev ? anchorGateTransaction(tv0, ev) : tv0;

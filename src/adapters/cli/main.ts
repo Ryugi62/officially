@@ -8,6 +8,7 @@ import { HttpAnchorFetcher } from "../anchor/http-fetcher"
 import { EnsAnchorFetcher, RoutingAnchorFetcher } from "../anchor/ens-fetcher"
 import { viemEnsResolver } from "../anchor/viem-ens"
 import { anchorUrl, applyAnchor } from "../../domain/anchor"
+import { parsePastedTx } from "../../domain/paste"
 import { checkTransaction } from "../../application/check-transaction"
 import { keepAlive, publishEndpoints, raiseIncident, renewLeases, rotatePublisher } from "../../application/writes"
 import type { Address, Anchor, Hex, Verdict } from "../../domain/types"
@@ -23,6 +24,9 @@ Read (no wallet):
   officially check-tx --to <0x> --data <0x…> --chain <id> [--origin <url>] --root <projectRootKey> [--anchor-url …]… [--json]
       --anchor-url: a place OUTSIDE Arkiv where the project states its root key (its own GitHub repo's .well-known/officially.json, or ens:<name> whose text record officially.rootKey names the key — read on Sepolia).
       With it, OFFICIAL needs the anchor to name the same root key; otherwise the verdict is UNVERIFIED_KEY.
+  officially check-tx --paste --root <projectRootKey> [--anchor-url …]… [--json] < wallet-window.txt
+      --paste (or piping text in without --to): paste what the wallet window shows — site, contract, chain, hex data — one step, no field-by-field typing.
+      Flags (--to --data --chain --origin) override what the text says.
   officially projects [--json]
   officially watch --root <projectRootKey>   live: prints every entity the project's keys create (run it on the team side:
                                              a new endpoint nobody published = stolen publisher key; rotate within the 48 h hold)
@@ -58,6 +62,11 @@ async function anchorEvidence(a: Args, root: string | undefined) {
   if (!root) throw new Error("--anchor-url needs --root (the key to confirm)")
   return confirmRootKey(new RoutingAnchorFetcher(new EnsAnchorFetcher(viemEnsResolver()), new HttpAnchorFetcher()), root as Address, refs.map(anchorUrl))
 }
+async function readStdin() {
+  let t = ""
+  for await (const c of process.stdin) t += c
+  return t
+}
 const big = (_: string, v: unknown) => (typeof v === "bigint" ? v.toString() : v)
 
 function printVerdict(v: Verdict, label?: string) {
@@ -87,9 +96,16 @@ export async function main(argv: string[]): Promise<number> {
       const origin = opt(a, "origin")
       const root = opt(a, "root")
       const ev = await anchorEvidence(a, root)
+      const pasted = a.flags.paste === true || (a.flags.to === undefined && !process.stdin.isTTY) ? parsePastedTx(await readStdin()) : undefined
+      const to = opt(a, "to") ?? pasted?.to
+      const data = opt(a, "data") ?? pasted?.data
+      const chainId = opt(a, "chain") !== undefined ? Number(opt(a, "chain")) : pasted?.chainId
+      const org = origin ?? pasted?.origin
+      const lack = [!to && "to", !data && "data", chainId === undefined && "chain"].filter(Boolean)
+      if (lack.length) throw new Error(`could not find ${lack.join(", ")} in the pasted text — pass it with --${lack[0] === "chain" ? "chain" : lack[0]}`)
       const tv0 = await checkTransaction(reader(), {
-        request: { to: str(a, "to"), data: str(a, "data"), chainId: Number(str(a, "chain")) },
-        ...(origin && { origin }),
+        request: { to: to!, data: data!, chainId: chainId! },
+        ...(org && { origin: org }),
         ...(root && { pin: { rootKey: root as Address } }),
       })
       const tv = ev ? anchorGateTransaction(tv0, ev) : tv0

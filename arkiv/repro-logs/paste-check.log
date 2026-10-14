@@ -1,0 +1,21 @@
+$ pbpaste-equivalent: text block from the wallet window piped into one command (run 2026-10-14)
+Request from app.demo-swap.example
+Interacting with: 0x5eed00000000000000000000000000000000aaaa
+Network: Sepolia (chain id 11155111)
+Hex data: 0x095ea7b3000000000000000000000000bad0000000000000000000000000000000000badffffffffffffffffffffffffffffffffffff
+$ officially check-tx --paste --root $R --anchor-url github:Ryugi62/demo-swap-site/.well-known/officially.json < walletwin.txt
+TRANSACTION FORGED
+origin    OFFICIAL  https://app.demo-swap.example
+          Published by 0x7169173d0d00db282f385fee8bece2d67d10c6f0, a key the pinned root trusts.
+          The lease is live; it lapses unless the project renews it.
+          key confirmed by anchor: https://raw.githubusercontent.com/Ryugi62/demo-swap-site/main/.well-known/officially.json
+          anchor origin github.com/Ryugi62/demo-swap-site ≠ tool repo Ryugi62/officially
+contract  OFFICIAL  eip155:11155111:0x5eed00000000000000000000000000000000aaaa
+          Published by 0x7169173d0d00db282f385fee8bece2d67d10c6f0, a key the pinned root trusts.
+          The lease is live; it lapses unless the project renews it.
+          key confirmed by anchor: https://raw.githubusercontent.com/Ryugi62/demo-swap-site/main/.well-known/officially.json
+          anchor origin github.com/Ryugi62/demo-swap-site ≠ tool repo Ryugi62/officially
+spender   FORGED    eip155:11155111:0xbad0000000000000000000000000000000000bad
+          Claimed by 0xcb7074f79e887426eba3ae9039f0b2ed620a8d6e, which is not a key of the pinned project.
+          Its name and labels are self-declared and do not count.
+exit 1

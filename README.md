@@ -151,7 +151,7 @@ Every entity, a link to its explorer page (which shows its creation transaction)
 
 **Honest framing: the in-page guard is a demo. The trust path is the CLI and the anchor.** A page that has been hijacked can simply leave the guard out, so a guard that lives *inside* the attacked page cannot be the thing you rely on. Two things work without it:
 
-1. **Outside the page.** Copy what your wallet's confirmation window shows (contract `to`, the hex `data`, the chain, the site name) into the CLI. It never touches the page; it asks Arkiv and the project's GitHub directly.
+1. **Outside the page.** Select the text your wallet's confirmation window shows (site, contract `to`, chain, hex `data`) and pipe or paste it into one command: `officially check-tx --paste --root $R --anchor-url … < window.txt`. It never touches the page; it asks Arkiv and the project's GitHub directly.
 2. **A root key confirmed outside Arkiv (reduces trust-on-first-use).** The check is only as good as the root key you start from. Instead of typing a 42-character key you trust blindly, give the project's own GitHub file as an anchor: `--anchor-url github:<owner>/<repo>/<path>/officially.json`. The verdict is `OFFICIAL` only if that file (served by the project's GitHub account, a different credential from any Arkiv key, and a repo other than this tool's — the verdict prints `anchor origin … ≠ tool repo`) names **the same root key**; if it names another key or cannot be read, the verdict is **`UNVERIFIED_KEY`** and exits 1. What you must know independently shrinks from "a hex key" to "the project's GitHub repository", which you can read, star or find from the project's docs.
 
 ```text
@@ -171,7 +171,7 @@ An anchor can also be an **ENS name**: `--anchor-url ens:yourproject.eth` reads 
 | Hijacked frontend swaps the spender | Yes, if you check the wallet window's values with the CLI (or the guard is actually installed in your wallet flow). The in-page demo guard is **not** a defence against a page that removes it. |
 | You never pinned the project before the incident | Reduced, not removed: one independent fact (the project's GitHub repo) replaces a blind key paste. If an attacker also controls the project's GitHub, nothing here helps. |
 | Theft of the **root** key | No. Rotation, anchors and the 48 h hold only bound a stolen *publisher* key. |
-| Checking is manual today | Yes — it is a copy-paste step. Wallet integration is the next step, not something this entry has. |
+| Checking is manual today | Yes, but one paste, not four: `officially check-tx --paste` takes the whole text block from the wallet window (site, contract, chain, hex data) and parses it — before, you copied four separate values into four flags ([`paste-check.log`](arkiv/repro-logs/paste-check.log), [`paste.test.ts`](tests/domain/paste.test.ts)). Still a step you take; wallet integration is not something this entry has. |
 
 **How this differs from the security alerts already in wallets.** Both are warnings shown at signing time; the difference is whose statement you are shown. Sources read on 14 Oct 2026.
 
