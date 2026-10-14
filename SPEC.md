@@ -1,10 +1,10 @@
 # Officially — SPEC (SDD, v0.3 2026-10-12)
 
-## 0. One line
+## 0. One line (목적 / purpose)
 **Officially** checks, right before you sign, whether the contract or spender your wallet is asked to approve — and the site and handle asking — were published by that Web3 project's own key, are still live, and are not under an incident the project raised. No server, no indexer: the check is one Arkiv query anyone can run.
 The essence is **not** "another phishing blocklist" (a vendor's opinion, updated after the fact) and **not** "is this URL official" (a hijacked DNS serves the official URL) but **"is the address I am about to approve one the project itself published?"** — a hijacked frontend can change everything on the page except the project's key.
 
-## 1. Success conditions (numbers) · deadline (constant) · non-goals
+## 1. Success conditions (성공 조건, numbers) · deadline (constant) · non-goals (비목표)
 - Reference (same problem, existing results): MetaMask `eth-phishing-detect` (vendor-curated block/allow list, GitHub), Blockaid/ScamSniffer (vendor scanning), Uniswap interface releases (per-release IPFS CID the user verifies by hand). None is authored by the project's own key and queryable across projects. Harm this targets: Curve DNS hijack 2022-08-09 (~$573K), Balancer DNS hijack 2023-09-19 (~$238K), Curve DNS hijack again 2025-05-12.
 - Success:
   - A transaction request (approve / increaseAllowance / setApprovalForAll / Permit2 approve / EIP-2612 permit typed data) is decoded and every address it would authorize is checked; an unpublished spender on the official domain yields `FORGED`/`UNLISTED`, never `OFFICIAL` (test with the Curve-2022 shape: official origin, malicious spender).
@@ -76,12 +76,12 @@ A transaction verdict is the worst of its parts, in the order INCIDENT > FORGED 
 | UC-8 ListProjects | cursor | page of Project records | cursor pagination, ≤ 200/page |
 | UC-9 CheckTransaction | request (`to`, `data`, `chainId`) or EIP-712 typed data, origin, pin | combined Verdict + per-address verdicts | decode known approval selectors; every authorized address and the origin are checked; worst wins |
 
-## 6. Acceptance criteria (Given/When/Then) — each becomes ≥ 1 test
+## 6. Acceptance criteria (Given/When/Then, given·when·then) — each becomes ≥ 1 test
 - AC-1 normalize: Given `HTTPS://App.Example.org/swap?x=1#y`, When normalized, Then target = `https://app.example.org` (origin only, lowercase host, default port dropped). Given `0xAbC…` with chain 1, Then `eip155:1:0xabc…`. Given `@Curve`/`https://x.com/Curve`, Then `x:@curve`.
 - AC-2 hash: same target → same 32-byte hash; different targets → different hashes; hash matches keccak256(utf8(target)) from viem (contract test).
 - AC-3 official: Given a live claim created by the publisher named in the root's live Project record, When checked, Then `OFFICIAL` with lease expiry.
 - AC-4 forged: Given a claim with identical attributes and payload but created by another key, Then `FORGED` and the evidence shows that creator.
-- AC-5 writable fields ignored: For any claim not created by a trusted key, setting `project_slug` to the pinned project's slug never yields `OFFICIAL` (property test over random attribute values).
+- AC-5 writable fields ignored: For any claim not created by a trusted key, setting `project_slug` to the pinned project's slug never yields `OFFICIAL` (property test over random attribute values). Static half (`tests/domain/verdict-source.test.ts`): given the source of `src/domain/verdict.ts`, when comments are stripped, then it never reads `.projectSlug`, `.slug`, `.label`, `.kind`, `.name`, `.title`, `.advice` or `.payload`.
 - AC-6 incident overrides: Given an official claim and a live Incident by a trusted key on the same hash (or project-wide), Then `INCIDENT`. An Incident created by an untrusted key does **not** change the verdict (and is shown as "unverified warning").
 - AC-7 revoked: Given the root rotated from publisher A to B (A's record deleted), When a claim by A is checked, Then `REVOKED`.
 - AC-8 unlisted / unpinned: no claim → `UNLISTED`; no pin → `UNPINNED` with the claimant list.
@@ -139,6 +139,7 @@ Ports ↔ adapters: `AttestationReader` ↔ `ArkivReader` (public client, HTTP) 
 - Open the deployed URL in a logged-out browser at 390 px and 1280 px; capture screenshots; verify a live incident flips the verdict without reload.
 
 ## 10. Change log
+- v0.5 2026-10-14 AC-5 static source test; expiry-check repro (real Entity Expiration blocks).
 - v0.4 2026-10-14 UI acceptance section; button/banner/status text contrast >= 4.5:1 (ui_audit fail 0).
 - v0.1 2026-10-12 first version (idea chosen by blind scoring).
 - v0.3 2026-10-12 mock-judge rounds 1–2: severity lifetimes, keep-alive never shortens, publisher history with cut-offs, typed-data allowlist, EIP-1193 guard, pin confirmation, snapshot never a clean pass.
