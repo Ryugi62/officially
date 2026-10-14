@@ -156,6 +156,8 @@ Every entity, a link to its explorer page (which shows its creation transaction)
 
 ## Security: what to trust, and what not (threat model)
 
+- **Check from outside the asking site, no install:** [`paste.html`](https://ryugi62.github.io/officially/paste.html) takes the text of the wallet's confirmation window and runs the same function as `check-tx --paste` (`checkPasted`, test [`check-pasted.test.ts`](tests/application/check-pasted.test.ts)). It is a static page of the tool itself, stores nothing and sends the pasted text nowhere.
+
 **Honest framing: the in-page guard is a demo. The trust path is the CLI and the anchor.** A page that has been hijacked can simply leave the guard out, so a guard that lives *inside* the attacked page cannot be the thing you rely on. Two things work without it:
 
 1. **Outside the page.** Select the text your wallet's confirmation window shows (site, contract `to`, chain, hex `data`) and pipe or paste it into one command: `officially check-tx --paste --root $R --anchor-url … < window.txt`. It never touches the page; it asks Arkiv and the project's GitHub directly.

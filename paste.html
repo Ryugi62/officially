@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Officially — paste the wallet window, get a verdict</title>
+<meta name="description" content="Copy the text of your wallet's confirmation window into this page, outside the site that is asking you to sign. Officially checks every address in it against the project's own key on Arkiv.">
+<link rel="stylesheet" href="/src/adapters/web/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">Officially</div>
+    <p class="tagline">Check from outside the site that is asking you to sign.<br>Nothing to install: copy the wallet window's text, paste it here.</p>
+  </div>
+</header>
+<main class="wrap">
+  <section class="card">
+    <h2>Paste the wallet window</h2>
+    <p class="sub">Open this page in a separate tab, never from a link on the site that asks you to sign. Select the text of your wallet's confirmation window (the site, the contract, the network, the hex data), copy it, paste it below. The text is read in your browser and sent nowhere; this page stores nothing.</p>
+    <form id="paste-form">
+      <label for="root" class="label">Project root key (the identity: get it from the project's GitHub or ENS before any incident)</label>
+      <input id="root" name="root" autocomplete="off" spellcheck="false">
+      <label for="text" class="label">Text from the wallet window</label>
+      <textarea id="text" name="text" rows="9" spellcheck="false" autocomplete="off" placeholder="Request from app.demo-swap.example&#10;Interacting with: 0x…&#10;Network: Sepolia (chain id 11155111)&#10;Hex data: 0x095ea7b3…"></textarea>
+      <button class="btn cta" type="submit">Check this request</button>
+    </form>
+    <div id="result" class="result" aria-live="polite"></div>
+    <details id="read" hidden><summary>What was read from your paste</summary><pre id="read-out"></pre></details>
+  </section>
+  <section class="card how">
+    <h2>Same check as the terminal</h2>
+    <p class="sub">This page and <code>officially check-tx --paste</code> call the same function, so the same text gives the same verdict. If a field cannot be found it is reported as missing, never guessed. Only Demo Swap (synthetic) is published by us; a real project publishes its own record. <a href="./">Back to the demo</a> · <a href="https://github.com/Ryugi62/officially#security-what-to-trust-and-what-not-threat-model">Security</a> · <a href="https://github.com/Ryugi62/officially">Source (MIT)</a></p>
+  </section>
+</main>
+<script type="module" src="/src/infrastructure/paste-main.ts"></script>
+</body>
+</html>

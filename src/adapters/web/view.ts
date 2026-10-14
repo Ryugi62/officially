@@ -105,3 +105,12 @@ export function txHeadline(tv: { verdict: { status: VerdictStatus }; parts: { ro
         : { text: `Safe to sign: every address was published by ${project}`, tone: "ok" }
   }
 }
+
+export function renderTransaction(tv: { verdict: Verdict; parts: { role: string; verdict: Verdict }[]; undecoded: boolean }, c: RenderCtx, gate?: string): string {
+  const published = tv.parts.filter((p) => p.verdict.status === "OFFICIAL" || p.verdict.status === "PROBATION").length
+  const onHold = tv.parts.filter((p) => p.verdict.status === "PROBATION").length
+  const head = c.snapshotBlock !== undefined && tv.verdict.status === "OFFICIAL" ? snapshotHeadline() : txHeadline(tv, c.projectName)
+  const tone = head.tone
+  return `<div class="summary tone-${tone}"><div class="big">${esc(head.text)}</div><div>${published} of ${tv.parts.length} addresses published by ${esc(c.projectName)}'s keys${onHold ? ` · ${onHold} on hold` : ""}${gate ? ` · ${esc(gate)}` : ""}</div></div>` +
+    tv.parts.map((p) => renderVerdict(p.verdict, c, p.role)).join("")
+}

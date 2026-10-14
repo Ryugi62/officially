@@ -30237,12 +30237,17 @@ function evaluateAnchors(rootKey, docs) {
 function applyAnchor(v, e) {
 	if (e.state === "CONFIRMED") {
 		if (v.status !== "OFFICIAL" && v.status !== "PROBATION") return v;
+		const dropped = e.reasons.filter((r) => r.startsWith("anchor ignored "));
 		return {
 			...v,
-			reasons: [...v.reasons, ...e.confirmedBy.flatMap((s) => {
-				const o = anchorOrigin(s);
-				return [`key confirmed by anchor: ${s}`, o.independent ? `anchor origin ${o.label} ≠ tool repo ${TOOL_REPO}` : `anchor origin ${o.label} is the same repo as the tool — weak: not an independent credential`];
-			})]
+			reasons: [
+				...v.reasons,
+				...dropped,
+				...e.confirmedBy.flatMap((s) => {
+					const o = anchorOrigin(s);
+					return [`key confirmed by anchor: ${s}`, o.independent ? `anchor origin ${o.label} ≠ tool repo ${TOOL_REPO}` : `anchor origin ${o.label} is the same repo as the tool — weak: not an independent credential`];
+				})
+			]
 		};
 	}
 	if (v.status !== "OFFICIAL" && v.status !== "PROBATION") return v;
@@ -30254,6 +30259,46 @@ function applyAnchor(v, e) {
 			"root key NOT confirmed by an independent anchor — do not treat as official",
 			...e.reasons
 		]
+	};
+}
+//#endregion
+//#region src/domain/anchor-sources.ts
+/** The location to fetch for an anchor stored in a project record (GitHub blob link, github: ref, ens:, https). */
+function recordAnchorUrl(a) {
+	const blob = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.+)$/.exec(a.ref);
+	try {
+		if (blob) return `https://raw.githubusercontent.com/${blob[1]}/${blob[2]}/${blob[3]}/${blob[4]}`;
+		return anchorUrl(a.ref);
+	} catch {
+		return;
+	}
+}
+/**
+* The anchor list that may confirm a root key. Sources:
+* 1. the `anchors` field of a project record signed by the root key (only when the user, not a page, chose that root);
+* 2. anchors the user pinned earlier.
+* Anything a page or link offered, and any typed anchor the record does not list, is dropped and reported.
+*/
+function selectAnchors(i) {
+	const ignored = [];
+	const pinned = i.pinned.map((s) => s.trim());
+	const fromRecord = i.rootFrom === "pinned" ? i.records.flatMap((r) => r.anchors.map(recordAnchorUrl).filter((u) => !!u)) : [];
+	if (i.rootFrom === "page" && i.records.some((r) => r.anchors.length)) ignored.push({
+		ref: "(project record)",
+		reason: "the root key came from a page or link, so the anchors in the record it signed prove nothing"
+	});
+	const known = /* @__PURE__ */ new Set([...fromRecord, ...pinned]);
+	for (const p of i.fromPage.map((s) => s.trim())) if (!known.has(p)) ignored.push({
+		ref: p,
+		reason: "offered by a page or link: anchors are never learned from the page"
+	});
+	for (const s of i.supplied.map((x) => x.trim())) if (!known.has(s)) ignored.push({
+		ref: s,
+		reason: "not listed in the project record signed by the root key and not pinned earlier"
+	});
+	return {
+		refs: [...known],
+		ignored
 	};
 }
 //#endregion
@@ -30275,6 +30320,26 @@ function anchorGateTransaction(tv, e) {
 		...tv,
 		parts,
 		verdict: worst(parts.map((p) => p.verdict))
+	};
+}
+/**
+* Anchor evidence for a root key, with the anchor list taken from the root-signed project record (or earlier pins), never from a page.
+* Returns undefined only when there is nothing to check (no record anchor, nothing offered): the answer is then pin-only.
+*/
+async function anchorEvidenceFor(fetcher, reader, rootKey, opts) {
+	const records = await reader.findProjectRecords(rootKey);
+	const sel = selectAnchors({
+		rootFrom: opts.rootFrom,
+		records,
+		pinned: opts.pinned ?? [],
+		supplied: opts.supplied ?? [],
+		fromPage: opts.fromPage ?? []
+	});
+	if (sel.refs.length === 0 && sel.ignored.length === 0) return void 0;
+	const ev = await confirmRootKey(fetcher, rootKey, sel.refs);
+	return {
+		...ev,
+		reasons: [...ev.reasons, ...sel.ignored.map((i) => `anchor ignored ${i.ref}: ${i.reason}`)]
 	};
 }
 //#endregion
@@ -30528,6 +30593,40 @@ async function checkTransaction(reader, input) {
 		verdict: worst(out.map((p) => p.verdict)),
 		parts: out,
 		undecoded: isUndecoded(input.request)
+	};
+}
+//#endregion
+//#region src/application/check-pasted.ts
+/** UC-10: the one function behind `check-tx --paste` and the web paste page. Never guesses a missing field. */
+async function checkPasted(reader, input) {
+	const pasted = parsePastedTx(input.text);
+	const o = input.overrides ?? {};
+	const to = o.to ?? pasted.to;
+	const data = o.data ?? pasted.data;
+	const chainId = o.chainId ?? pasted.chainId;
+	const origin = o.origin ?? pasted.origin;
+	const lack = [
+		!to && "to",
+		!data && "data",
+		chainId === void 0 && "chain"
+	].filter((x) => !!x);
+	if (lack.length) return {
+		kind: "incomplete",
+		lack,
+		pasted
+	};
+	return {
+		kind: "checked",
+		tv: await checkTransaction(reader, {
+			request: {
+				to,
+				data,
+				chainId
+			},
+			...origin && { origin },
+			...input.pin && { pin: input.pin }
+		}),
+		pasted
 	};
 }
 //#endregion
@@ -31144,8 +31243,9 @@ var HELP = `officially — check that what you are about to trust was published 
 Read (no wallet):
   officially check <link|@handle|0xaddress|eip155:chain:0xaddress> --root <projectRootKey> [--anchor-url <url|github:owner/repo/path>]… [--chain <id>] [--json]
   officially check-tx --to <0x> --data <0x…> --chain <id> [--origin <url>] --root <projectRootKey> [--anchor-url …]… [--json]
-      --anchor-url: a place OUTSIDE Arkiv where the project states its root key (its own GitHub repo's .well-known/officially.json, or ens:<name> whose text record officially.rootKey names the key — read on Sepolia).
-      With it, OFFICIAL needs the anchor to name the same root key; otherwise the verdict is UNVERIFIED_KEY.
+      Anchors: the places OUTSIDE Arkiv where the project states its root key (its GitHub .well-known/officially.json, or ens:<name> whose text record officially.rootKey names the key — read on Sepolia)
+      are read from the "anchors" field of the project record signed by --root; they are never learned from a page. --anchor-url only counts if that record lists it too.
+      With an anchor, OFFICIAL needs it to name the same root key; otherwise the verdict is UNVERIFIED_KEY.
   officially check-tx --paste --root <projectRootKey> [--anchor-url …]… [--json] < wallet-window.txt
       --paste (or piping text in without --to): paste what the wallet window shows — site, contract, chain, hex data — one step, no field-by-field typing.
       Flags (--to --data --chain --origin) override what the text says.
@@ -31186,10 +31286,15 @@ var str = (a, k) => {
 };
 var opt = (a, k) => typeof a.flags[k] === "string" ? a.flags[k] : void 0;
 async function anchorEvidence(a, root) {
-	const refs = a.multi["anchor-url"] ?? [];
-	if (!refs.length) return void 0;
-	if (!root) throw new Error("--anchor-url needs --root (the key to confirm)");
-	return confirmRootKey(new RoutingAnchorFetcher(new EnsAnchorFetcher(viemEnsResolver()), new HttpAnchorFetcher()), root, refs.map(anchorUrl));
+	const supplied = (a.multi["anchor-url"] ?? []).map(anchorUrl);
+	if (!root) {
+		if (supplied.length) throw new Error("--anchor-url needs --root (the key to confirm)");
+		return;
+	}
+	return anchorEvidenceFor(new RoutingAnchorFetcher(new EnsAnchorFetcher(viemEnsResolver()), new HttpAnchorFetcher()), reader(), root, {
+		rootFrom: "pinned",
+		supplied
+	});
 }
 async function readStdin() {
 	let t = "";
@@ -31227,26 +31332,22 @@ async function main(argv) {
 			const origin = opt(a, "origin");
 			const root = opt(a, "root");
 			const ev = await anchorEvidence(a, root);
-			const pasted = a.flags.paste === true || a.flags.to === void 0 && !process.stdin.isTTY ? parsePastedTx(await readStdin()) : void 0;
-			const to = opt(a, "to") ?? pasted?.to;
-			const data = opt(a, "data") ?? pasted?.data;
-			const chainId = opt(a, "chain") !== void 0 ? Number(opt(a, "chain")) : pasted?.chainId;
-			const org = origin ?? pasted?.origin;
-			const lack = [
-				!to && "to",
-				!data && "data",
-				chainId === void 0 && "chain"
-			].filter(Boolean);
-			if (lack.length) throw new Error(`could not find ${lack.join(", ")} in the pasted text — pass it with --${lack[0] === "chain" ? "chain" : lack[0]}`);
-			const tv0 = await checkTransaction(reader(), {
-				request: {
-					to,
-					data,
-					chainId
+			const text = a.flags.paste === true || a.flags.to === void 0 && !process.stdin.isTTY ? await readStdin() : "";
+			const chainOpt = opt(a, "chain");
+			const to = opt(a, "to");
+			const data = opt(a, "data");
+			const res = await checkPasted(reader(), {
+				text,
+				overrides: {
+					...to && { to },
+					...data && { data },
+					...chainOpt !== void 0 && { chainId: Number(chainOpt) },
+					...origin && { origin }
 				},
-				...org && { origin: org },
 				...root && { pin: { rootKey: root } }
 			});
+			if (res.kind === "incomplete") throw new Error(`could not find ${res.lack.join(", ")} in the pasted text — pass it with --${res.lack[0]}`);
+			const tv0 = res.tv;
 			const tv = ev ? anchorGateTransaction(tv0, ev) : tv0;
 			if (json) console.log(JSON.stringify(tv, big, 2));
 			else {

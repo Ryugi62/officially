@@ -10,7 +10,7 @@ import { CachingReader } from "../adapters/memory/caching-reader"
 import { isRateLimit } from "../adapters/web/rate-limit"
 import { readerFromSnapshot, type MemoryReader } from "../adapters/memory/memory-reader"
 import { approveCalldata } from "../adapters/web/calldata"
-import { blocksToText, esc, plainText, renderVerdict, snapshotHeadline, txHeadline, type RenderCtx } from "../adapters/web/view"
+import { blocksToText, esc, plainText, renderVerdict, snapshotHeadline, type RenderCtx, renderTransaction } from "../adapters/web/view"
 import { guardProvider, OfficiallyBlockedError } from "../adapters/wallet/guard"
 import type { Address, Incident, ProjectRecord, Verdict } from "../domain/types"
 import { DEMO } from "./demo"
@@ -95,15 +95,6 @@ async function loadProject() {
   document.getElementById("keep-pin")?.addEventListener("click", () => { pendingPin = undefined; void loadProject() })
 }
 
-function renderTx(tv: TransactionVerdict, c: RenderCtx, gate?: string): string {
-  const published = tv.parts.filter((p) => p.verdict.status === "OFFICIAL" || p.verdict.status === "PROBATION").length
-  const onHold = tv.parts.filter((p) => p.verdict.status === "PROBATION").length
-  const head = c.snapshotBlock !== undefined && tv.verdict.status === "OFFICIAL" ? snapshotHeadline() : txHeadline(tv, c.projectName)
-  const tone = head.tone
-  return `<div class="summary tone-${tone}"><div class="big">${esc(head.text)}</div><div>${published} of ${tv.parts.length} addresses published by ${esc(c.projectName)}'s keys${onHold ? ` · ${onHold} on hold` : ""}${gate ? ` · ${esc(gate)}` : ""}</div></div>` +
-    tv.parts.map((p) => renderVerdict(p.verdict, c, p.role)).join("")
-}
-
 const skeleton = '<div class="skeleton"></div><div class="skeleton"></div>'
 const showError = (out: HTMLElement, e: unknown) => { out.innerHTML = `<p class="error">${esc(isRateLimit(e) ? "RPC limit — nothing could be read and no snapshot is available; signing verdict on hold. Add ?rpc=<your Arkiv node>." : String((e as Error)?.message ?? e))}</p>` }
 
@@ -131,9 +122,9 @@ async function runGuard() {
   })
   try {
     await wallet.request({ method: "eth_sendTransaction", params: [{ to: DEMO.token, data: approveCalldata(spender) }] })
-    out.innerHTML = renderTx(tv!, await ctx(), "passed to your wallet to sign")
+    out.innerHTML = renderTransaction(tv!, await ctx(), "passed to your wallet to sign")
   } catch (e) {
-    if (e instanceof OfficiallyBlockedError) out.innerHTML = renderTx(e.verdict, await ctx(), snapshot ? "held: only the snapshot is available, not passed to your wallet" : "blocked before your wallet saw it")
+    if (e instanceof OfficiallyBlockedError) out.innerHTML = renderTransaction(e.verdict, await ctx(), snapshot ? "held: only the snapshot is available, not passed to your wallet" : "blocked before your wallet saw it")
     else showError(out, e)
   }
 }
@@ -150,7 +141,7 @@ async function runCheck(ev?: Event) {
       const req = JSON.parse(q)
       const request = "typedData" in req || "domain" in req ? { typedData: req.typedData ?? req } : { to: req.to, data: req.data, chainId: Number(req.chainId ?? chainId) }
       const tv = await withFallback((r) => checkTransaction(r, { request, ...(req.origin && { origin: req.origin }), pin }))
-      out.innerHTML = renderTx(tv, await ctx())
+      out.innerHTML = renderTransaction(tv, await ctx())
     } else {
       const v: Verdict = await withFallback((r) => checkTarget(r, { raw: q, ...(chainId && { chainId }), pin }))
       out.innerHTML = renderVerdict(v, await ctx())

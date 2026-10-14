@@ -8,7 +8,7 @@ import { HttpAnchorFetcher } from "../anchor/http-fetcher"
 import { EnsAnchorFetcher, RoutingAnchorFetcher } from "../anchor/ens-fetcher"
 import { viemEnsResolver } from "../anchor/viem-ens"
 import { anchorUrl, applyAnchor } from "../../domain/anchor"
-import { parsePastedTx } from "../../domain/paste"
+import { checkPasted } from "../../application/check-pasted"
 import { checkTransaction } from "../../application/check-transaction"
 import { keepAlive, publishEndpoints, raiseIncident, renewLeases, rotatePublisher } from "../../application/writes"
 import type { Address, Anchor, Hex, Verdict } from "../../domain/types"
@@ -100,18 +100,17 @@ export async function main(argv: string[]): Promise<number> {
       const origin = opt(a, "origin")
       const root = opt(a, "root")
       const ev = await anchorEvidence(a, root)
-      const pasted = a.flags.paste === true || (a.flags.to === undefined && !process.stdin.isTTY) ? parsePastedTx(await readStdin()) : undefined
-      const to = opt(a, "to") ?? pasted?.to
-      const data = opt(a, "data") ?? pasted?.data
-      const chainId = opt(a, "chain") !== undefined ? Number(opt(a, "chain")) : pasted?.chainId
-      const org = origin ?? pasted?.origin
-      const lack = [!to && "to", !data && "data", chainId === undefined && "chain"].filter(Boolean)
-      if (lack.length) throw new Error(`could not find ${lack.join(", ")} in the pasted text — pass it with --${lack[0] === "chain" ? "chain" : lack[0]}`)
-      const tv0 = await checkTransaction(reader(), {
-        request: { to: to!, data: data!, chainId: chainId! },
-        ...(org && { origin: org }),
+      const text = a.flags.paste === true || (a.flags.to === undefined && !process.stdin.isTTY) ? await readStdin() : ""
+      const chainOpt = opt(a, "chain")
+      const to = opt(a, "to")
+      const data = opt(a, "data")
+      const res = await checkPasted(reader(), {
+        text,
+        overrides: { ...(to && { to }), ...(data && { data }), ...(chainOpt !== undefined && { chainId: Number(chainOpt) }), ...(origin && { origin }) },
         ...(root && { pin: { rootKey: root as Address } }),
       })
+      if (res.kind === "incomplete") throw new Error(`could not find ${res.lack.join(", ")} in the pasted text — pass it with --${res.lack[0]}`)
+      const tv0 = res.tv
       const tv = ev ? anchorGateTransaction(tv0, ev) : tv0
       if (json) console.log(JSON.stringify(tv, big, 2))
       else {
