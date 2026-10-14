@@ -1,0 +1,12 @@
+checked 2026-10-14T05:56Z
+TRANSACTION OFFICIAL
+origin    OFFICIAL  https://app.demo-swap.example
+          Published by 0x7169173d0d00db282f385fee8bece2d67d10c6f0, a key the pinned root trusts.
+          The lease is live; it lapses unless the project renews it.
+contract  OFFICIAL  eip155:11155111:0x5eed00000000000000000000000000000000aaaa
+          Published by 0x7169173d0d00db282f385fee8bece2d67d10c6f0, a key the pinned root trusts.
+          The lease is live; it lapses unless the project renews it.
+spender   OFFICIAL  eip155:11155111:0x5eed00000000000000000000000000000000a11c
+          Published by 0x7169173d0d00db282f385fee8bece2d67d10c6f0, a key the pinned root trusts.
+          The lease is live; it lapses unless the project renews it.
+exit=0

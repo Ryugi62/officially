@@ -144,7 +144,7 @@ OFFICIALLY_PUBLISHER_KEY=… officially incident --target https://old.yourprojec
 | [`0xcb7074f79E887426Eba3aE9039F0b2ed620a8d6e`](https://tiramisu.explorer.arkiv.network/address/0xcb7074f79E887426Eba3aE9039F0b2ed620a8d6e) | Simulated attacker: a forged claim under Demo Swap's name |
 | [`0x81989FF0bCd1B25b9b751c53a7266904F83B5ec2`](https://tiramisu.explorer.arkiv.network/address/0x81989FF0bCd1B25b9b751c53a7266904F83B5ec2) | Community wallet: keeps an incident alive (permissionless extension) |
 
-Every entity, a link to its explorer page (which shows its creation transaction) and its expiry: [`arkiv/evidence.md`](arkiv/evidence.md). Logs of the README commands: [`readme-commands.log`](arkiv/repro-logs/readme-commands.log). If the public RPC rate-limits your IP (anonymous budget ≈ 100 requests), the app falls back to [`snapshot.json`](public/snapshot.json) and says so.
+Every entity, a link to its explorer page (which shows its creation transaction) and its expiry: [`arkiv/evidence.md`](arkiv/evidence.md). Entities that lapse before 24 October on purpose: three incidents (24 h / 72 h / 7 d lives) and the endpoints published with a scheduled retirement (20, 21, 22 October). Their keys, expiries and explorer pages (each shows the creation transaction) are in [`evidence.md`](arkiv/evidence.md); the real Entity Expiration blocks, read from the chain, are in [`expiry-check.log`](arkiv/repro-logs/expiry-check.log) (`npx tsx scripts/repro/expiry-check.ts`). The long-lived ones (project record, current endpoints) end on 11 Nov 2026 or later. Logs of the README commands: [`readme-commands.log`](arkiv/repro-logs/readme-commands.log). If the public RPC rate-limits your IP (anonymous budget ≈ 100 requests), the app falls back to [`snapshot.json`](public/snapshot.json) and says so.
 
 ## Limits
 
@@ -159,7 +159,7 @@ Every entity, a link to its explorer page (which shows its creation transaction)
 
 | When | Milestone | Target |
 |---|---|---|
-| 14 Oct 2026 | Demo endpoints leave their 48 h hold; the guard passes the genuine approve to the wallet | 3/3 addresses `OFFICIAL` on the live page |
+| 14 Oct 2026 | Demo endpoints leave their 48 h hold; the guard passes the genuine approve to the wallet | 3/3 addresses `OFFICIAL` on the live page (done: [log](arkiv/repro-logs/official-after-hold.log)) |
 | 20–22 Oct 2026 | Three demo endpoints retire on schedule during judging | `v1`, `Router v1`, `Beta` read "not published" after 12:00 UTC on their day |
 | Nov 2026 | Browser-extension wrapper around `guardProvider` for one wallet, plus a SEAL Safe Harbor importer (labelled "mirrored", never `OFFICIAL`) | 1 wallet, ≥ 5 mirrored protocols |
 
