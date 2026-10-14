@@ -1,0 +1,20 @@
+$ officially check https://app.demo-swap.example --root $R --anchor-url github:Ryugi62/officially/demo/.well-known/officially.json   (run 14 Oct 2026)
+OFFICIAL  https://app.demo-swap.example
+          Published by 0x7169173d0d00db282f385fee8bece2d67d10c6f0, a key the pinned root trusts.
+          The lease is live; it lapses unless the project renews it.
+          key confirmed by anchor: https://raw.githubusercontent.com/Ryugi62/officially/main/demo/.well-known/officially.json
+exit 0
+
+$ ... --anchor-url github:Ryugi62/officially/demo/.well-known/does-not-exist.json  (anchor absent)
+UNVERIFIED_KEY https://app.demo-swap.example
+          Published by 0x7169173d0d00db282f385fee8bece2d67d10c6f0, a key the pinned root trusts.
+          The lease is live; it lapses unless the project renews it.
+          root key NOT confirmed by an independent anchor — do not treat as official
+          anchor https://raw.githubusercontent.com/Ryugi62/officially/main/demo/.well-known/does-not-exist.json: unreadable or no root key stated
+exit 1
+
+$ ... no --anchor-url (pin only, as before)
+OFFICIAL  https://app.demo-swap.example
+          Published by 0x7169173d0d00db282f385fee8bece2d67d10c6f0, a key the pinned root trusts.
+          The lease is live; it lapses unless the project renews it.
+exit 0

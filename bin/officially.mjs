@@ -30093,6 +30093,7 @@ var SEVERITY_ORDER = [
 	"FORGED",
 	"REVOKED",
 	"UNLISTED",
+	"UNVERIFIED_KEY",
 	"UNPINNED",
 	"PROBATION",
 	"OFFICIAL"
@@ -30132,6 +30133,104 @@ async function checkTarget(reader, input) {
 	const [v] = await assessTargets(reader, [normalizeTarget(input.raw, input.chainId === void 0 ? {} : { chainId: input.chainId })], input.pin);
 	return v;
 }
+//#endregion
+//#region src/domain/anchor.ts
+var HEX40 = /^0x[0-9a-fA-F]{40}$/;
+/** `officially.rootKey` of a well-known file. Anything else is not an anchor. */
+function parseAnchorDoc(text) {
+	try {
+		const k = JSON.parse(text)?.officially?.rootKey;
+		return typeof k === "string" && HEX40.test(k) ? k.toLowerCase() : void 0;
+	} catch {
+		return;
+	}
+}
+/** `github:owner/repo/path` → raw.githubusercontent.com (default branch main); https URLs pass; http is refused. */
+function anchorUrl(ref) {
+	const gh = /^github:([^/\s]+)\/([^/\s@]+)(?:@([^/\s]+))?\/(.+)$/.exec(ref);
+	if (gh) return `https://raw.githubusercontent.com/${gh[1]}/${gh[2]}/${gh[3] ?? "main"}/${gh[4]}`;
+	if (!ref.startsWith("https://")) throw new Error(`Anchor must be https:// or github:owner/repo/path (got ${ref})`);
+	return ref;
+}
+function evaluateAnchors(rootKey, docs) {
+	const root = rootKey.toLowerCase();
+	const confirmedBy = [];
+	const reasons = [];
+	let mismatch = false;
+	for (const d of docs) {
+		const stated = d.text === void 0 ? void 0 : parseAnchorDoc(d.text);
+		if (stated === void 0) reasons.push(`anchor ${d.source}: unreadable or no root key stated`);
+		else if (stated === root) confirmedBy.push(d.source);
+		else {
+			mismatch = true;
+			reasons.push(`anchor ${d.source} names root key ${stated}, not ${root}`);
+		}
+	}
+	const state = mismatch ? "MISMATCH" : confirmedBy.length > 0 ? "CONFIRMED" : "ABSENT";
+	if (docs.length === 0) reasons.push("no anchor given: the root key is only what you typed or pinned");
+	return {
+		state,
+		confirmedBy,
+		reasons
+	};
+}
+/** Trust needs the key itself confirmed outside Arkiv: without it, OFFICIAL/PROBATION become UNVERIFIED_KEY. Worse verdicts stay. */
+function applyAnchor(v, e) {
+	if (e.state === "CONFIRMED") {
+		if (v.status !== "OFFICIAL" && v.status !== "PROBATION") return v;
+		return {
+			...v,
+			reasons: [...v.reasons, ...e.confirmedBy.map((s) => `key confirmed by anchor: ${s}`)]
+		};
+	}
+	if (v.status !== "OFFICIAL" && v.status !== "PROBATION") return v;
+	return {
+		...v,
+		status: "UNVERIFIED_KEY",
+		reasons: [
+			...v.reasons,
+			"root key NOT confirmed by an independent anchor — do not treat as official",
+			...e.reasons
+		]
+	};
+}
+//#endregion
+//#region src/application/confirm-root.ts
+/** Does any place outside Arkiv state this root key? Network failures read as "absent", never as "confirmed". */
+async function confirmRootKey(fetcher, rootKey, urls) {
+	return evaluateAnchors(rootKey, await Promise.all([...new Set(urls)].map(async (source) => ({
+		source,
+		text: await fetcher.fetchText(source).catch(() => void 0)
+	}))));
+}
+/** Apply the anchor result to every part of a transaction check; the combined verdict is the worst part again. */
+function anchorGateTransaction(tv, e) {
+	const parts = tv.parts.map((p) => ({
+		...p,
+		verdict: applyAnchor(p.verdict, e)
+	}));
+	return {
+		...tv,
+		parts,
+		verdict: worst(parts.map((p) => p.verdict))
+	};
+}
+//#endregion
+//#region src/adapters/anchor/http-fetcher.ts
+var MAX_BYTES = 65536;
+/** HTTPS GET with a 10 s timeout and a 64 KB cap. Redirects are followed by fetch; the result is only compared, never executed. */
+var HttpAnchorFetcher = class {
+	async fetchText(url) {
+		if (!url.startsWith("https://")) return void 0;
+		const res = await fetch(url, {
+			signal: AbortSignal.timeout(1e4),
+			headers: { accept: "application/json,text/plain" }
+		});
+		if (!res.ok) return void 0;
+		const text = await res.text();
+		return text.length > MAX_BYTES ? void 0 : text;
+	}
+};
 //#endregion
 //#region src/domain/transaction.ts
 var UndecodableRequestError = class extends Error {
@@ -30820,7 +30919,11 @@ var COMMANDS = [
 	"rotate",
 	"help"
 ];
-var MULTI = /* @__PURE__ */ new Set(["endpoint", "anchor"]);
+var MULTI = /* @__PURE__ */ new Set([
+	"endpoint",
+	"anchor",
+	"anchor-url"
+]);
 var BOOL = /* @__PURE__ */ new Set([
 	"json",
 	"project-wide",
@@ -30860,8 +30963,10 @@ var exitCodeFor = (s) => s === "OFFICIAL" ? 0 : 1;
 var HELP = `officially — check that what you are about to trust was published by a project's own key (Arkiv, Tiramisu testnet)
 
 Read (no wallet):
-  officially check <link|@handle|0xaddress|eip155:chain:0xaddress> --root <projectRootKey> [--chain <id>] [--json]
-  officially check-tx --to <0x> --data <0x…> --chain <id> [--origin <url>] --root <projectRootKey> [--json]
+  officially check <link|@handle|0xaddress|eip155:chain:0xaddress> --root <projectRootKey> [--anchor-url <url|github:owner/repo/path>]… [--chain <id>] [--json]
+  officially check-tx --to <0x> --data <0x…> --chain <id> [--origin <url>] --root <projectRootKey> [--anchor-url …]… [--json]
+      --anchor-url: a place OUTSIDE Arkiv where the project states its root key (its GitHub repo's .well-known/officially.json).
+      With it, OFFICIAL needs the anchor to name the same root key; otherwise the verdict is UNVERIFIED_KEY.
   officially projects [--json]
   officially watch --root <projectRootKey>   live: prints every entity the project's keys create (run it on the team side:
                                              a new endpoint nobody published = stolen publisher key; rotate within the 48 h hold)
@@ -30898,6 +31003,12 @@ var str = (a, k) => {
 	return v;
 };
 var opt = (a, k) => typeof a.flags[k] === "string" ? a.flags[k] : void 0;
+async function anchorEvidence(a, root) {
+	const refs = a.multi["anchor-url"] ?? [];
+	if (!refs.length) return void 0;
+	if (!root) throw new Error("--anchor-url needs --root (the key to confirm)");
+	return confirmRootKey(new HttpAnchorFetcher(), root, refs.map(anchorUrl));
+}
 var big = (_, v) => typeof v === "bigint" ? v.toString() : v;
 function printVerdict(v, label) {
 	console.log(`${label ? `${label.padEnd(9)} ` : ""}${v.status.padEnd(9)} ${v.target ?? ""}`);
@@ -30915,18 +31026,21 @@ async function main(argv) {
 			if (!target) throw new Error("check needs a target");
 			const chain = opt(a, "chain");
 			const root = opt(a, "root");
-			const v = await checkTarget(reader(), {
+			const ev = await anchorEvidence(a, root);
+			const v0 = await checkTarget(reader(), {
 				raw: target,
 				...chain && { chainId: Number(chain) },
 				...root && { pin: { rootKey: root } }
 			});
+			const v = ev ? applyAnchor(v0, ev) : v0;
 			json ? console.log(JSON.stringify(v, big, 2)) : printVerdict(v);
 			return exitCodeFor(v.status);
 		}
 		case "check-tx": {
 			const origin = opt(a, "origin");
 			const root = opt(a, "root");
-			const tv = await checkTransaction(reader(), {
+			const ev = await anchorEvidence(a, root);
+			const tv0 = await checkTransaction(reader(), {
 				request: {
 					to: str(a, "to"),
 					data: str(a, "data"),
@@ -30935,6 +31049,7 @@ async function main(argv) {
 				...origin && { origin },
 				...root && { pin: { rootKey: root } }
 			});
+			const tv = ev ? anchorGateTransaction(tv0, ev) : tv0;
 			if (json) console.log(JSON.stringify(tv, big, 2));
 			else {
 				console.log(`TRANSACTION ${tv.verdict.status}${tv.undecoded ? " (calldata not decoded — only the contract was checked)" : ""}`);
