@@ -23,7 +23,7 @@ Officially checks, right before you sign, that the contract or spender your wall
 | When | What happened | Loss | Source |
 |---|---|---|---|
 | 9–10 Aug 2022 | Curve's DNS was hijacked; the cloned site "requested approval to a malicious contract used to drain funds" | ~$570K | [Curve Market Cap newsletter](https://curve.substack.com/p/august-10-2022-curve-frontend-hacked) |
-| 19–20 Sep 2023 | Balancer's frontend was hit by a DNS attack | over $250K | [Decrypt, 20 Sep 2023](https://decrypt.co/197953/balancer-frontend-hit-by-dns-attack-over-250k-stolen) |
+| 19–20 Sep 2023 | Balancer's frontend was hit by a DNS attack | ≈$238K (PeckShield estimate) | [Decrypt, 20 Sep 2023](https://decrypt.co/197953/balancer-frontend-hit-by-dns-attack-over-250k-stolen) |
 | 12–13 May 2025 | Curve's DNS was hijacked **again**, sending users to a malicious site | not disclosed | [Cointelegraph, 13 May 2025](https://cointelegraph.com/news/curve-finance-warns-dns-hijacked-again) |
 
 The pattern repeats because the victim does everything right: they type the real domain, see the real-looking page, and sign. **The domain is official; the spender is not.** A domain allowlist passes this attack. Officially checks the spender.
@@ -103,7 +103,7 @@ Verdicts: `OFFICIAL` · `PROBATION` · `INCIDENT` · `FORGED` · `REVOKED` · `U
 
 **1. Read the data without our code or servers (plain JSON-RPC):**
 ```bash
-curl -s https://rpc.tiramisu.db-chain.testnet.arkiv.network -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"arkiv_query","params":["app = str('"'"'officially.v1'"'"') AND $creator = addr(0x04a16DA7180594eF2dFFcF70431e809432CE438F)",{"select":{"key":true,"attributes":true,"payload":true,"expiresAt":true},"limit":"0x20"}]}'
+curl -s https://rpc.tiramisu.db-chain.testnet.arkiv.network -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"arkiv_query","params":["app = str('"'"'officially.v1'"'"') AND $creator = addr(0x7169173d0D00db282f385FEE8BeCe2D67d10c6f0)",{"select":{"key":true,"attributes":true,"payload":true,"expiresAt":true},"limit":"0x20"}]}'
 ```
 This returns every endpoint claim and incident Demo Swap's publisher key created. The payloads are hex-encoded JSON.
 
