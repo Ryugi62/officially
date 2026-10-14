@@ -7,9 +7,10 @@ import type { AttestationReader } from "../application/ports"
 import { ArkivIncidentFeed, createFeedClient } from "../adapters/arkiv/feed"
 import { ArkivReader, ReadTimeoutError } from "../adapters/arkiv/reader"
 import { CachingReader } from "../adapters/memory/caching-reader"
+import { isRateLimit } from "../adapters/web/rate-limit"
 import { readerFromSnapshot, type MemoryReader } from "../adapters/memory/memory-reader"
 import { approveCalldata } from "../adapters/web/calldata"
-import { blocksToText, esc, plainText, renderVerdict, txHeadline, type RenderCtx } from "../adapters/web/view"
+import { blocksToText, esc, plainText, renderVerdict, snapshotHeadline, txHeadline, type RenderCtx } from "../adapters/web/view"
 import { guardProvider, OfficiallyBlockedError } from "../adapters/wallet/guard"
 import type { Address, Incident, ProjectRecord, Verdict } from "../domain/types"
 import { DEMO } from "./demo"
@@ -42,10 +43,6 @@ function setPin(v: Address) {
   try { localStorage.setItem("officially.root", v) } catch { /* private mode */ }
 }
 
-function isRateLimit(e: unknown) {
-  return e instanceof ReadTimeoutError || /429|rate|fetch|Failed to fetch/i.test(String((e as Error)?.message ?? e))
-}
-
 async function withFallback<T>(run: (r: AttestationReader) => Promise<T>): Promise<T> {
   try {
     return await run(reader)
@@ -72,14 +69,15 @@ function trustedKeys(): Address[] {
 const fingerprint = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
 
 async function loadProject() {
-  records = await withFallback((r) => r.findProjectRecords(pin.rootKey)).catch(() => [])
+  let limited = false
+  records = await withFallback((r) => r.findProjectRecords(pin.rootKey)).catch((e) => { limited = isRateLimit(e); return [] })
   const r = records[0]
   const anchors = r?.anchors.map((a) => `<li>${esc(a.kind)}: <code>${esc(a.ref)}</code></li>`).join("") ?? ""
   const offer = pendingPin
     ? `<div class="offer"><p><strong>This link asks you to check against a different root key: <code>${esc(pendingPin)}</code>.</strong> Only accept it if you got the link from the project before any incident — a phishing link can carry an attacker's key.</p><button class="btn small" id="accept-pin" type="button">Use ${esc(fingerprint(pendingPin))}</button> <button class="btn small ghost" id="keep-pin" type="button">Keep ${esc(fingerprint(pin.rootKey))}</button></div>`
     : ""
   $("pin").innerHTML = `<div class="pin-main">${offer}<div class="sub">Checking against root key</div>
-    <div class="who"><code>${esc(fingerprint(pin.rootKey))}</code> <span class="sub">${r ? `self-declared name: ${esc(r.name)}` : "no project record for this key"}</span></div>
+    <div class="who"><code>${esc(fingerprint(pin.rootKey))}</code> <span class="sub">${r ? `self-declared name: ${esc(r.name)}` : (snapshot || limited ? "RPC limit — snapshot shown, signing verdict on hold" : "no project record for this key")}</span></div>
     <form id="pin-form" class="pin-form"><label class="label" for="root">Project root key (the identity — names are self-declared)</label><input id="root" value="${esc(pin.rootKey)}" spellcheck="false" autocomplete="off"><button class="btn small" type="submit">Pin</button></form>
     ${r ? `<details><summary>Where the project states this key</summary><ul>${anchors || "<li>No anchors in the record.</li>"}</ul><p class="sub">Pin a root key from a source you trusted before any incident (its GitHub, its ENS name). A hijacked site cannot change these records: only this key can.</p></details>` : ""}</div>`
   $("pin-form").addEventListener("submit", (e) => {
@@ -97,14 +95,14 @@ async function loadProject() {
 function renderTx(tv: TransactionVerdict, c: RenderCtx, gate?: string): string {
   const published = tv.parts.filter((p) => p.verdict.status === "OFFICIAL" || p.verdict.status === "PROBATION").length
   const onHold = tv.parts.filter((p) => p.verdict.status === "PROBATION").length
-  const head = txHeadline(tv, c.projectName)
-  const tone = c.snapshotBlock !== undefined && head.tone === "ok" ? "warn" : head.tone
+  const head = c.snapshotBlock !== undefined && tv.verdict.status === "OFFICIAL" ? snapshotHeadline() : txHeadline(tv, c.projectName)
+  const tone = head.tone
   return `<div class="summary tone-${tone}"><div class="big">${esc(head.text)}</div><div>${published} of ${tv.parts.length} addresses published by ${esc(c.projectName)}'s keys${onHold ? ` · ${onHold} on hold` : ""}${gate ? ` · ${esc(gate)}` : ""}</div></div>` +
     tv.parts.map((p) => renderVerdict(p.verdict, c, p.role)).join("")
 }
 
 const skeleton = '<div class="skeleton"></div><div class="skeleton"></div>'
-const showError = (out: HTMLElement, e: unknown) => { out.innerHTML = `<p class="error">${esc(String((e as Error)?.message ?? e))}</p>` }
+const showError = (out: HTMLElement, e: unknown) => { out.innerHTML = `<p class="error">${esc(isRateLimit(e) ? "RPC limit — nothing could be read and no snapshot is available; signing verdict on hold. Add ?rpc=<your Arkiv node>." : String((e as Error)?.message ?? e))}</p>` }
 
 /** The demo wallet: stands in for MetaMask. The dApp talks to it only through guardProvider, like a real integration. */
 const demoWallet = {
@@ -126,12 +124,13 @@ async function runGuard() {
     origin: DEMO.origin,
     check: (req, origin) => withFallback((r) => checkTransaction(r, { request: req, origin, pin })),
     onVerdict: (v) => { tv = v },
+    isLive: () => !snapshot,
   })
   try {
     await wallet.request({ method: "eth_sendTransaction", params: [{ to: DEMO.token, data: approveCalldata(spender) }] })
     out.innerHTML = renderTx(tv!, await ctx(), "passed to your wallet to sign")
   } catch (e) {
-    if (e instanceof OfficiallyBlockedError) out.innerHTML = renderTx(e.verdict, await ctx(), "blocked before your wallet saw it")
+    if (e instanceof OfficiallyBlockedError) out.innerHTML = renderTx(e.verdict, await ctx(), snapshot ? "held: only the snapshot is available, not passed to your wallet" : "blocked before your wallet saw it")
     else showError(out, e)
   }
 }

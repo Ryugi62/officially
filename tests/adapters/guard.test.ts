@@ -45,4 +45,10 @@ describe("guardProvider (EIP-1193)", () => {
     const w = wallet()
     await expect(mk(w).request({ method: "eth_chainId" })).resolves.toBe("0x1")
   })
+  it("never passes a clean verdict that came from the offline snapshot, even if every address matches", async () => {
+    const w = wallet()
+    const g = guardProvider(w.provider, { origin: ORIGIN, isLive: () => false, check: (req, origin) => checkTransaction(reader(), { request: req, origin, pin: { rootKey: ROOT } }) })
+    await expect(g.request({ method: "eth_sendTransaction", params: [{ to: TOKEN, data: approve(ROUTER) }] })).rejects.toMatchObject({ code: 4001 })
+    expect(w.seen).not.toContain("eth_sendTransaction")
+  })
 })

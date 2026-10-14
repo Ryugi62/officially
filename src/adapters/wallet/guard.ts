@@ -26,12 +26,14 @@ export function guardProvider(
     check: (req: TxRequest | TypedDataRequest, origin: string) => Promise<TransactionVerdict>
     confirm?: (v: TransactionVerdict) => Promise<boolean>
     onVerdict?: (v: TransactionVerdict) => void
+    /** false while the verdict was computed from the offline snapshot: a snapshot misses incidents raised after it, so it never counts as a clean pass */
+    isLive?: () => boolean
   },
 ): Eip1193 {
   const gate = async (req: TxRequest | TypedDataRequest) => {
     const v = await opts.check(req, opts.origin)
     opts.onVerdict?.(v)
-    const clean = v.verdict.status === "OFFICIAL" && !v.undecoded
+    const clean = v.verdict.status === "OFFICIAL" && !v.undecoded && (opts.isLive?.() ?? true)
     if (!clean && !(await opts.confirm?.(v))) throw new OfficiallyBlockedError(v)
   }
   return {

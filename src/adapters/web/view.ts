@@ -82,6 +82,9 @@ export function renderVerdict(v: Verdict, ctx: RenderCtx, role?: string): string
 }
 
 const SEVERITY_ORDER = ["INCIDENT", "FORGED", "REVOKED", "UNLISTED", "UNPINNED", "PROBATION", "OFFICIAL"]
+/** Shown instead of any pass while the RPC is rate-limited and only the snapshot is available. */
+export const snapshotHeadline = (): { text: string; tone: Tone } => ({ text: "RPC limit — snapshot shown, signing verdict on hold", tone: "warn" })
+
 /** The verdict in words, naming the address role that fails — shown above the counts. */
 export function txHeadline(tv: { verdict: { status: VerdictStatus }; parts: { role: string; verdict: { status: VerdictStatus } }[]; undecoded: boolean }, project: string): { text: string; tone: Tone } {
   const worst = [...tv.parts].sort((a, b) => SEVERITY_ORDER.indexOf(a.verdict.status) - SEVERITY_ORDER.indexOf(b.verdict.status))[0]
