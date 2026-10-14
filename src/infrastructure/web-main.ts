@@ -28,6 +28,8 @@ let reader: AttestationReader = live
 let snapshot: { reader: MemoryReader; block: bigint } | undefined
 let pin = { rootKey: savedPin() }
 const linkRoot = params.get("root")
+/** Anchors offered by the link are never used: they are learned only from the root-signed record. Shown so the user knows. */
+const pageAnchors = params.getAll("anchor")
 let pendingPin: Address | undefined = linkRoot && ADDR.test(linkRoot) && linkRoot.toLowerCase() !== pin.rootKey.toLowerCase() ? (linkRoot as Address) : undefined
 let records: ProjectRecord[] = []
 let unwatch: (() => void) | undefined
@@ -76,7 +78,8 @@ async function loadProject() {
   const offer = pendingPin
     ? `<div class="offer"><p><strong>This link asks you to check against a different root key: <code>${esc(pendingPin)}</code>.</strong> Only accept it if you got the link from the project before any incident — a phishing link can carry an attacker's key.</p><button class="btn small" id="accept-pin" type="button">Use ${esc(fingerprint(pendingPin))}</button> <button class="btn small ghost" id="keep-pin" type="button">Keep ${esc(fingerprint(pin.rootKey))}</button></div>`
     : ""
-  $("pin").innerHTML = `<div class="pin-main">${offer}<div class="sub">Checking against root key</div>
+  const dropped = pageAnchors.length ? `<div class="offer"><p><strong>This link offered ${pageAnchors.length} anchor(s) — ignored.</strong> Anchors are read only from the record signed by the root key, never from a link or page.</p></div>` : ""
+  $("pin").innerHTML = `<div class="pin-main">${offer}${dropped}<div class="sub">Checking against root key</div>
     <div class="who"><code>${esc(fingerprint(pin.rootKey))}</code> <span class="sub">${r ? `self-declared name: ${esc(r.name)}` : (snapshot || limited ? "RPC limit — snapshot shown, signing verdict on hold" : "no project record for this key")}</span></div>
     <form id="pin-form" class="pin-form"><label class="label" for="root">Project root key (the identity — names are self-declared)</label><input id="root" value="${esc(pin.rootKey)}" spellcheck="false" autocomplete="off"><button class="btn small" type="submit">Pin</button></form>
     ${r ? `<details><summary>Where the project states this key</summary><ul>${anchors || "<li>No anchors in the record.</li>"}</ul><p class="sub">Pin a root key from a source you trusted before any incident (its GitHub, its ENS name). A hijacked site cannot change these records: only this key can.</p></details>` : ""}</div>`

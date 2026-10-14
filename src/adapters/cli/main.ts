@@ -3,7 +3,7 @@ import { tiramisu } from "@arkiv-network/sdk/chains"
 import { http } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
 import { checkTarget } from "../../application/check-target"
-import { anchorGateTransaction, confirmRootKey } from "../../application/confirm-root"
+import { anchorEvidenceFor, anchorGateTransaction } from "../../application/confirm-root"
 import { HttpAnchorFetcher } from "../anchor/http-fetcher"
 import { EnsAnchorFetcher, RoutingAnchorFetcher } from "../anchor/ens-fetcher"
 import { viemEnsResolver } from "../anchor/viem-ens"
@@ -22,8 +22,9 @@ const HELP = `officially — check that what you are about to trust was publishe
 Read (no wallet):
   officially check <link|@handle|0xaddress|eip155:chain:0xaddress> --root <projectRootKey> [--anchor-url <url|github:owner/repo/path>]… [--chain <id>] [--json]
   officially check-tx --to <0x> --data <0x…> --chain <id> [--origin <url>] --root <projectRootKey> [--anchor-url …]… [--json]
-      --anchor-url: a place OUTSIDE Arkiv where the project states its root key (its own GitHub repo's .well-known/officially.json, or ens:<name> whose text record officially.rootKey names the key — read on Sepolia).
-      With it, OFFICIAL needs the anchor to name the same root key; otherwise the verdict is UNVERIFIED_KEY.
+      Anchors: the places OUTSIDE Arkiv where the project states its root key (its GitHub .well-known/officially.json, or ens:<name> whose text record officially.rootKey names the key — read on Sepolia)
+      are read from the "anchors" field of the project record signed by --root; they are never learned from a page. --anchor-url only counts if that record lists it too.
+      With an anchor, OFFICIAL needs it to name the same root key; otherwise the verdict is UNVERIFIED_KEY.
   officially check-tx --paste --root <projectRootKey> [--anchor-url …]… [--json] < wallet-window.txt
       --paste (or piping text in without --to): paste what the wallet window shows — site, contract, chain, hex data — one step, no field-by-field typing.
       Flags (--to --data --chain --origin) override what the text says.
@@ -57,10 +58,13 @@ const str = (a: Args, k: string) => {
 }
 const opt = (a: Args, k: string) => (typeof a.flags[k] === "string" ? (a.flags[k] as string) : undefined)
 async function anchorEvidence(a: Args, root: string | undefined) {
-  const refs = a.multi["anchor-url"] ?? []
-  if (!refs.length) return undefined
-  if (!root) throw new Error("--anchor-url needs --root (the key to confirm)")
-  return confirmRootKey(new RoutingAnchorFetcher(new EnsAnchorFetcher(viemEnsResolver()), new HttpAnchorFetcher()), root as Address, refs.map(anchorUrl))
+  const supplied = (a.multi["anchor-url"] ?? []).map(anchorUrl)
+  if (!root) {
+    if (supplied.length) throw new Error("--anchor-url needs --root (the key to confirm)")
+    return undefined
+  }
+  // The anchor list comes from the root-signed project record; --anchor-url counts only if that record lists it too.
+  return anchorEvidenceFor(new RoutingAnchorFetcher(new EnsAnchorFetcher(viemEnsResolver()), new HttpAnchorFetcher()), reader(), root as Address, { rootFrom: "pinned", supplied })
 }
 async function readStdin() {
   let t = ""

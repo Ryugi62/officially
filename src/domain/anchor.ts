@@ -81,7 +81,8 @@ export function evaluateAnchors(rootKey: Address, docs: AnchorDoc[]): AnchorEvid
 export function applyAnchor(v: Verdict, e: AnchorEvidence): Verdict {
   if (e.state === "CONFIRMED") {
     if (v.status !== "OFFICIAL" && v.status !== "PROBATION") return v
-    return { ...v, reasons: [...v.reasons, ...e.confirmedBy.flatMap((s) => {
+    const dropped = e.reasons.filter((r) => r.startsWith("anchor ignored "))
+    return { ...v, reasons: [...v.reasons, ...dropped, ...e.confirmedBy.flatMap((s) => {
       const o = anchorOrigin(s)
       return [`key confirmed by anchor: ${s}`, o.independent ? `anchor origin ${o.label} ≠ tool repo ${TOOL_REPO}` : `anchor origin ${o.label} is the same repo as the tool — weak: not an independent credential`]
     })] }

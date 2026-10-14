@@ -24,7 +24,7 @@ const existing = (await new ArkivReader(pub).findProjectRecords(root.address)).f
 if (existing.length) log("1 root record already live", { key: existing[0]!.key })
 else log("1 root names publisher", await rotatePublisher(root, new ArkivReader(pub), {
   newPublisher: publisher.address, slug: DEMO.slug, name: DEMO.name,
-  anchors: [{ kind: "github", ref: "https://github.com/Ryugi62/officially/blob/main/demo/.well-known/officially.json" }],
+  anchors: [{ kind: "github", ref: "https://github.com/Ryugi62/demo-swap-site/blob/main/.well-known/officially.json" }],
 }))
 log("2 publisher publishes endpoints", await publishEndpoints(publisher, {
   projectSlug: DEMO.slug,

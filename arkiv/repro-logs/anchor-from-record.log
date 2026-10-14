@@ -1,0 +1,16 @@
+$ officially check https://app.demo-swap.example --root $R   (no --anchor-url: anchor read from the record)
+OFFICIAL  https://app.demo-swap.example
+          Published by 0x7169173d0d00db282f385fee8bece2d67d10c6f0, a key the pinned root trusts.
+          The lease is live; it lapses unless the project renews it.
+          key confirmed by anchor: https://raw.githubusercontent.com/Ryugi62/demo-swap-site/main/.well-known/officially.json
+          anchor origin github.com/Ryugi62/demo-swap-site ≠ tool repo Ryugi62/officially
+exit=0
+
+$ ... --anchor-url github:attacker/phish/.well-known/officially.json (not in the root-signed record: ignored)
+OFFICIAL  https://app.demo-swap.example
+          Published by 0x7169173d0d00db282f385fee8bece2d67d10c6f0, a key the pinned root trusts.
+          The lease is live; it lapses unless the project renews it.
+          anchor ignored https://raw.githubusercontent.com/attacker/phish/main/.well-known/officially.json: not listed in the project record signed by the root key and not pinned earlier
+          key confirmed by anchor: https://raw.githubusercontent.com/Ryugi62/demo-swap-site/main/.well-known/officially.json
+          anchor origin github.com/Ryugi62/demo-swap-site ≠ tool repo Ryugi62/officially
+exit=0
