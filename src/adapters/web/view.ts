@@ -23,6 +23,8 @@ export function statusCopy(status: VerdictStatus, project: string): { headline: 
       return { headline: `Signed by a key ${project} has retired`, tone: "no", icon: "✕" }
     case "UNLISTED":
       return { headline: `Not published by ${project}`, tone: "no", icon: "✕" }
+    case "UNVERIFIED_KEY":
+      return { headline: "Project key not confirmed outside Arkiv — do not rely on it", tone: "warn", icon: "?" }
     case "UNPINNED":
       return { headline: "Pick a project first — nobody vouches for this yet", tone: "idle", icon: "?" }
   }
@@ -81,7 +83,7 @@ export function renderVerdict(v: Verdict, ctx: RenderCtx, role?: string): string
 </article>`
 }
 
-const SEVERITY_ORDER = ["INCIDENT", "FORGED", "REVOKED", "UNLISTED", "UNPINNED", "PROBATION", "OFFICIAL"]
+const SEVERITY_ORDER = ["INCIDENT", "FORGED", "REVOKED", "UNLISTED", "UNVERIFIED_KEY", "UNPINNED", "PROBATION", "OFFICIAL"]
 /** Shown instead of any pass while the RPC is rate-limited and only the snapshot is available. */
 export const snapshotHeadline = (): { text: string; tone: Tone } => ({ text: "RPC limit — snapshot shown, signing verdict on hold", tone: "warn" })
 
@@ -94,6 +96,7 @@ export function txHeadline(tv: { verdict: { status: VerdictStatus }; parts: { ro
     case "FORGED": return { text: `Do not sign: the ${role} is forged`, tone: "no" }
     case "REVOKED": return { text: `Do not sign: the ${role} was published by a key ${project} retired`, tone: "no" }
     case "UNLISTED": return { text: `Do not sign: the ${role} was not published by ${project}`, tone: "no" }
+    case "UNVERIFIED_KEY": return { text: `Wait: ${project}'s key is not confirmed by an independent anchor`, tone: "warn" }
     case "UNPINNED": return { text: "Pick a project first — nobody vouches for this yet", tone: "idle" }
     case "PROBATION": return { text: `Wait: the ${role} was published less than 48 h ago`, tone: "warn" }
     case "OFFICIAL":

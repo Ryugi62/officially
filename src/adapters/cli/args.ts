@@ -2,7 +2,7 @@ import type { VerdictStatus } from "../../domain/types"
 
 export const COMMANDS = ["check", "check-tx", "watch", "projects", "publish", "renew", "incident", "keep-alive", "rotate", "help"] as const
 export type Command = (typeof COMMANDS)[number]
-const MULTI = new Set(["endpoint", "anchor"])
+const MULTI = new Set(["endpoint", "anchor", "anchor-url"])
 const BOOL = new Set(["json", "project-wide", "help"])
 
 export interface Args {

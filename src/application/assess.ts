@@ -4,7 +4,7 @@ import { decideVerdict } from "../domain/verdict"
 import type { AttestationReader } from "./ports"
 
 /** Worst first: a transaction is only as safe as the least safe address it authorizes. */
-export const SEVERITY_ORDER: VerdictStatus[] = ["INCIDENT", "FORGED", "REVOKED", "UNLISTED", "UNPINNED", "PROBATION", "OFFICIAL"]
+export const SEVERITY_ORDER: VerdictStatus[] = ["INCIDENT", "FORGED", "REVOKED", "UNLISTED", "UNVERIFIED_KEY", "UNPINNED", "PROBATION", "OFFICIAL"]
 export const worst = (vs: Verdict[]): Verdict =>
   [...vs].sort((a, b) => SEVERITY_ORDER.indexOf(a.status) - SEVERITY_ORDER.indexOf(b.status))[0]!
 

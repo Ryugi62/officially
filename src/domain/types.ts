@@ -70,7 +70,7 @@ export interface Pin {
   slug?: string
 }
 
-export type VerdictStatus = "OFFICIAL" | "PROBATION" | "INCIDENT" | "FORGED" | "REVOKED" | "UNLISTED" | "UNPINNED"
+export type VerdictStatus = "OFFICIAL" | "PROBATION" | "INCIDENT" | "FORGED" | "REVOKED" | "UNLISTED" | "UNPINNED" | "UNVERIFIED_KEY"
 
 export interface Verdict {
   status: VerdictStatus

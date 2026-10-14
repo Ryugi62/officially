@@ -3,6 +3,9 @@ import { tiramisu } from "@arkiv-network/sdk/chains"
 import { http } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
 import { checkTarget } from "../../application/check-target"
+import { anchorGateTransaction, confirmRootKey } from "../../application/confirm-root"
+import { HttpAnchorFetcher } from "../anchor/http-fetcher"
+import { anchorUrl, applyAnchor } from "../../domain/anchor"
 import { checkTransaction } from "../../application/check-transaction"
 import { keepAlive, publishEndpoints, raiseIncident, renewLeases, rotatePublisher } from "../../application/writes"
 import type { Address, Anchor, Hex, Verdict } from "../../domain/types"
@@ -14,8 +17,10 @@ import { exitCodeFor, parseArgs, type Args } from "./args"
 const HELP = `officially — check that what you are about to trust was published by a project's own key (Arkiv, Tiramisu testnet)
 
 Read (no wallet):
-  officially check <link|@handle|0xaddress|eip155:chain:0xaddress> --root <projectRootKey> [--chain <id>] [--json]
-  officially check-tx --to <0x> --data <0x…> --chain <id> [--origin <url>] --root <projectRootKey> [--json]
+  officially check <link|@handle|0xaddress|eip155:chain:0xaddress> --root <projectRootKey> [--anchor-url <url|github:owner/repo/path>]… [--chain <id>] [--json]
+  officially check-tx --to <0x> --data <0x…> --chain <id> [--origin <url>] --root <projectRootKey> [--anchor-url …]… [--json]
+      --anchor-url: a place OUTSIDE Arkiv where the project states its root key (its GitHub repo's .well-known/officially.json).
+      With it, OFFICIAL needs the anchor to name the same root key; otherwise the verdict is UNVERIFIED_KEY.
   officially projects [--json]
   officially watch --root <projectRootKey>   live: prints every entity the project's keys create (run it on the team side:
                                              a new endpoint nobody published = stolen publisher key; rotate within the 48 h hold)
@@ -45,6 +50,12 @@ const str = (a: Args, k: string) => {
   return v
 }
 const opt = (a: Args, k: string) => (typeof a.flags[k] === "string" ? (a.flags[k] as string) : undefined)
+async function anchorEvidence(a: Args, root: string | undefined) {
+  const refs = a.multi["anchor-url"] ?? []
+  if (!refs.length) return undefined
+  if (!root) throw new Error("--anchor-url needs --root (the key to confirm)")
+  return confirmRootKey(new HttpAnchorFetcher(), root as Address, refs.map(anchorUrl))
+}
 const big = (_: string, v: unknown) => (typeof v === "bigint" ? v.toString() : v)
 
 function printVerdict(v: Verdict, label?: string) {
@@ -64,18 +75,22 @@ export async function main(argv: string[]): Promise<number> {
       if (!target) throw new Error("check needs a target")
       const chain = opt(a, "chain")
       const root = opt(a, "root")
-      const v = await checkTarget(reader(), { raw: target, ...(chain && { chainId: Number(chain) }), ...(root && { pin: { rootKey: root as Address } }) })
+      const ev = await anchorEvidence(a, root)
+      const v0 = await checkTarget(reader(), { raw: target, ...(chain && { chainId: Number(chain) }), ...(root && { pin: { rootKey: root as Address } }) })
+      const v = ev ? applyAnchor(v0, ev) : v0
       json ? console.log(JSON.stringify(v, big, 2)) : printVerdict(v)
       return exitCodeFor(v.status)
     }
     case "check-tx": {
       const origin = opt(a, "origin")
       const root = opt(a, "root")
-      const tv = await checkTransaction(reader(), {
+      const ev = await anchorEvidence(a, root)
+      const tv0 = await checkTransaction(reader(), {
         request: { to: str(a, "to"), data: str(a, "data"), chainId: Number(str(a, "chain")) },
         ...(origin && { origin }),
         ...(root && { pin: { rootKey: root as Address } }),
       })
+      const tv = ev ? anchorGateTransaction(tv0, ev) : tv0
       if (json) console.log(JSON.stringify(tv, big, 2))
       else {
         console.log(`TRANSACTION ${tv.verdict.status}${tv.undecoded ? " (calldata not decoded — only the contract was checked)" : ""}`)
