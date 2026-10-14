@@ -1,7 +1,7 @@
 {
   "note": "Snapshot of the synthetic Demo Swap entities, shown only if the public Arkiv RPC rate-limits the viewer. Regenerate with npx tsx scripts/export-evidence.ts.",
-  "block": "512773",
-  "takenAt": "2026-10-13T07:08:18.892Z",
+  "block": "555898",
+  "takenAt": "2026-10-14T07:05:49.335Z",
   "rotation": {
     "txHash": "0x34ac5dc20adf43f81048c2a558c5aa455f2087b40b20e87c9abd8beb9d286df4",
     "block": 462115,
