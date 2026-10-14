@@ -74,7 +74,7 @@ A client written only from this file: [`examples/independent-check.mjs`](../exam
 ## Queries the app runs (exact strings, printed by `npx tsx scripts/print-queries.ts`)
 
 1. **Project records of a pinned root** — `app = str('officially.v1') AND type = str('project')` + `createdBy(<root>)`
-2. **Trusted attestations for one or more targets** (one read for a whole transaction):
+2. **Trusted attestations for one or more targets** (one query for a whole transaction):
    `app = str('officially.v1') AND (type = str('endpoint') AND (target_hash = bytes32(<h1>) OR target_hash = bytes32(<h2>) …) OR type = str('incident') AND (target_hash = bytes32(<h1>) OR … OR target_hash = bytes32(0x00…00))) AND ($creator = addr(<root>) OR $creator = addr(<publisher>) OR $creator = addr(<revoked publisher>))`
    Filtering on `$creator` inside the query means claims spammed by other keys can never push a trusted claim out of the 200-result page.
 3. **Conflicting claimants (bounded sample of 50)** — `app = str('officially.v1') AND type = str('endpoint') AND (target_hash = bytes32(<h1>) OR …)`

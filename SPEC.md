@@ -1,7 +1,7 @@
 # Officially — SPEC (SDD, v0.3 2026-10-12)
 
 ## 0. One line (목적 / purpose)
-**Officially** checks, right before you sign, whether the contract or spender your wallet is asked to approve — and the site and handle asking — were published by that Web3 project's own key, are still live, and are not under an incident the project raised. No server, no indexer: the check is one Arkiv query anyone can run.
+**Officially** checks, right before you sign, whether the contract or spender your wallet is asked to approve — and the site and handle asking — were published by that Web3 project's own key, are still live, and are not under an incident the project raised. No server, no indexer: the check is at most 3 RPC requests to Arkiv (measured max 3), and the trust question itself is one compound `$creator` query anyone can run.
 The essence is **not** "another phishing blocklist" (a vendor's opinion, updated after the fact) and **not** "is this URL official" (a hijacked DNS serves the official URL) but **"is the address I am about to approve one the project itself published?"** — a hijacked frontend can change everything on the page except the project's key.
 
 ## 1. Success conditions (성공 조건, numbers) · deadline (constant) · non-goals (비목표)

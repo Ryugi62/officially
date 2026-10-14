@@ -77,7 +77,7 @@ Every item below has a runnable repro in `scripts/repro/` (or `scripts/`) and th
 
 ### S1 — `$creator` inside `where()`, including OR over several creators
 - **Tested**: `or(eq("$creator", addr(root)), eq("$creator", addr(publisher)))` combined with typed attribute predicates, from the SDK and from raw JSON-RPC.
-- **Expected → result**: accepted and answered by both (`sys-attr-predicates.log`, `raw-rpc-vs-sdk.log`). This is what lets one read keep only the project's keys.
+- **Expected → result**: accepted and answered by both (`sys-attr-predicates.log`, `raw-rpc-vs-sdk.log`). This is what lets one query keep only the project's keys.
 
 ### S2 — Atomic batch: create + ownership transfer to a burn address, with `predictEntityKeys`
 - **Tested**: `predictEntityKeys({ owner, count: 1 })`, then `executeBatch({ creates: [{ …, salt }], ownershipChanges: [{ entityKey: predicted, newOwner: 0x…dEaD }] })`.

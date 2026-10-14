@@ -1,7 +1,7 @@
 # Officially
 
 **A hijacked frontend can change everything on the page except the project's key.**
-Officially checks, right before you sign, that the contract or spender your wallet is asked to approve — and the site asking — were published by the project's own key on [Arkiv](https://arkiv.network), are still live, and are not under an incident the project raised. No server, no indexer: the check is one Arkiv query anyone can run.
+Officially checks, right before you sign, that the contract or spender your wallet is asked to approve — and the site asking — were published by the project's own key on [Arkiv](https://arkiv.network), are still live, and are not under an incident the project raised. No server, no indexer: the check is at most 3 RPC requests to Arkiv (measured max 3), and the trust question itself is one compound `$creator` query anyone can run.
 
 - **Live app:** https://ryugi62.github.io/officially/ — no wallet, no sign-up. Flip "This site's DNS was hijacked" and press Approve.
 - **Check from a terminal (no wallet):**
@@ -61,10 +61,10 @@ The pattern repeats because the victim does everything right: they type the real
 | **Our own signed JSON API** | Same single point of failure as the project's DNS, and the reverse lookup "who claims this spender" needs our server. |
 | **EAS attestations** (closest relative: attester ≈ `$creator`, `expirationTime`, revocation) | "Which of these keys attested this exact address, and is it still live?" goes through EAS's indexer/GraphQL, an operator again. Expiry is fixed at creation (no lease renewed on deploy) and there is no permissionless keep-alive. EAS also has non-revocable schemas, so a warning can be made unretractable there too; the gap is the reverse lookup through an operator's indexer and the missing lease and keep-alive, not revocation. |
 
-**The one question only Arkiv answers natively:** *"which live entities on these target hashes were created by these keys?"* That is a reverse lookup by value, filtered by immutable author and by liveness, answered by the chain's own query engine in one read. Every alternative above needs an indexer someone runs, or loses authorship or expiry.
+**The one question only Arkiv answers natively:** *"which live entities on these target hashes were created by these keys?"* That is a reverse lookup by value, filtered by immutable author and by liveness, answered by the chain's own query engine in one query (a whole check is at most 3 RPC requests). Every alternative above needs an indexer someone runs, or loses authorship or expiry.
 
 **The Arkiv properties Officially relies on, and what happens without them:**
-- **Immutable `$creator`, filtered inside the query.** The verdict is one read: entities on these target hashes whose `$creator` is the project's root or publisher key (`$creator = addr(…) OR $creator = addr(…)` in `where()`). Remove it and the product falls apart: anyone with test GLM can write an identical claim, as our simulated attacker did, and only `$creator` tells them apart. The demo shows that claim as **FORGED**.
+- **Immutable `$creator`, filtered inside the query.** The trust question is one query (the rest of the ≤ 3 requests fetch the project record and incidents): entities on these target hashes whose `$creator` is the project's root or publisher key (`$creator = addr(…) OR $creator = addr(…)` in `where()`). Remove it and the product falls apart: anyone with test GLM can write an identical claim, as our simulated attacker did, and only `$creator` tells them apart. The demo shows that claim as **FORGED**.
 - **Entity Expiration as a lease.** An endpoint is official only while the publisher keeps renewing it. Retired endpoints lapse by themselves; three demo endpoints lapse on 20, 21 and 22 October, during judging.
 - **`readonly` + `permissionlessExtension` + ownership transfer to `0x…dEaD` in one atomic batch.** A warning nobody — not even a stolen project key — can edit or delete, and anyone can keep alive.
 
@@ -78,7 +78,7 @@ Four things change for the person about to sign. Each is verified in the code **
 
 | Feature | What the user sees | Why |
 |---|---|---|
-| Compound query with `$creator` in `where()` | One read checks a whole transaction (origin + contract + spender) | Spam claims by other keys cannot crowd a trusted claim out of the 200-result page |
+| Compound query with `$creator` in `where()` | One query checks a whole transaction (origin + contract + spender) | Spam claims by other keys cannot crowd a trusted claim out of the 200-result page |
 | Lifetime Extension as a lease | Endpoints stay official only while renewed on each deploy | Forgotten endpoints stop being official on their own |
 | `readonly` + `permissionlessExtension` | Claims cannot be edited; anyone can keep a warning alive | A stolen key cannot rewrite history; a dark team cannot silence a warning |
 | `watchEntityEvents` over WebSocket, no `fromBlock` | A new incident flips open checks to INCIDENT without a reload | Push arrived 817 ms after the write ([log](arkiv/repro-logs/ws-incident-latency.log)); polling would spend the RPC budget every judge shares |

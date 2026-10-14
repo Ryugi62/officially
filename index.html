@@ -56,7 +56,7 @@
     <ol>
       <li>The project's <b>root key</b> names a <b>publisher key</b> in a readonly Arkiv entity.</li>
       <li>The publisher publishes its official sites, handles and contracts as readonly Arkiv entities with a 30-day lease, renewed on every deploy.</li>
-      <li>Your check is one Arkiv query that keeps only entities whose immutable <code>$creator</code> is one of those keys. Names and labels anyone can write are never trusted.</li>
+      <li>Your check is at most 3 RPC requests, and the trust question is one Arkiv query that keeps only entities whose immutable <code>$creator</code> is one of those keys. Names and labels anyone can write are never trusted.</li>
       <li>New endpoints wait 48 hours. Incidents can only restrict, are handed to a burn address so no key can delete them, and anyone can keep them alive.</li>
     </ol>
     <p class="sub">No server, no indexer: this page talks straight to Arkiv's Tiramisu RPC. Same check from a terminal: <code>npx github:Ryugi62/officially check https://app.demo-swap.example --root 0x70E5d4986A251a5173Acf59c86178e144B62864E</code></p>

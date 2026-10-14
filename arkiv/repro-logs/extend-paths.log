@@ -20,3 +20,9 @@ exit=0
 0x99604748 creator 0x04a16DA7180594eF2dFFcF70431e809432CE438F owner 0x04a16DA7180594eF2dFFcF70431e809432CE438F expiresAt 1756664n flags {"readonly":true,"permissionlessExtension":false,"raw":1} type endpoint
 0x5e78d174 creator 0x04a16DA7180594eF2dFFcF70431e809432CE438F owner 0x04a16DA7180594eF2dFFcF70431e809432CE438F expiresAt 1756664n flags {"readonly":true,"permissionlessExtension":false,"raw":1} type endpoint
 block 460666n
+
+# 2026-10-14 judging-window keep-alive (scripts/ops/extend-incidents.ts, community key, permissionless extension, testnet)
+0xb5e8e07b0c  tx 0x918cffb247568750d2492851b811eec0e34441ff47c5b82f74093de2fdb96f5a  expiresAt block 787654 -> 1018326
+0x828e576bd4  tx 0x1ee4794f5b457cd4743f3c85ffbb74118617fb7c4a6caaa12b0c559bc72e662d  expiresAt block 787655 -> 1018326
+0x4b3f243a1d  tx 0xcbc9ebf316a85c56cf9e153010201645c1993f6c3821f3bf3d1d8546db7d7e32  expiresAt block 787656 -> 1018326
+(earlier same-day passes with a wrong lifetime: 0x43c7e8e3…, 0x43409f29…, 0x745d90b9…, 0xe042b300… — only lengthened, never shortened)
