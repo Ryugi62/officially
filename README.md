@@ -110,7 +110,7 @@ This returns every endpoint claim and incident Demo Swap's publisher key created
 
 **2. The verdicts the demo shows (CLI, no wallet):**
 ```bash
-R=0x70E5d4986A251a5173Acf59c86178e144B62864E   # Demo Swap's root key (also stated in demo/.well-known/officially.json)
+R=0x70E5d4986A251a5173Acf59c86178e144B62864E   # Demo Swap's root key (also stated in the separate repo Ryugi62/demo-swap-site)
 npx github:Ryugi62/officially check https://app.demo-swap.example --root $R                               # OFFICIAL (PROBATION during its first 48 h)
 npx github:Ryugi62/officially check eip155:11155111:0xbad0000000000000000000000000000000000bad --root $R   # FORGED
 npx github:Ryugi62/officially check https://demo-swap-airdrop.example --root $R                           # INCIDENT (Demo Swap warns: fake airdrop site)
@@ -152,19 +152,19 @@ Every entity, a link to its explorer page (which shows its creation transaction)
 **Honest framing: the in-page guard is a demo. The trust path is the CLI and the anchor.** A page that has been hijacked can simply leave the guard out, so a guard that lives *inside* the attacked page cannot be the thing you rely on. Two things work without it:
 
 1. **Outside the page.** Copy what your wallet's confirmation window shows (contract `to`, the hex `data`, the chain, the site name) into the CLI. It never touches the page; it asks Arkiv and the project's GitHub directly.
-2. **A root key confirmed outside Arkiv (reduces trust-on-first-use).** The check is only as good as the root key you start from. Instead of typing a 42-character key you trust blindly, give the project's own GitHub file as an anchor: `--anchor-url github:<owner>/<repo>/<path>/officially.json`. The verdict is `OFFICIAL` only if that file (served by the project's GitHub account, a different credential from any Arkiv key) names **the same root key**; if it names another key or cannot be read, the verdict is **`UNVERIFIED_KEY`** and exits 1. What you must know independently shrinks from "a hex key" to "the project's GitHub repository", which you can read, star or find from the project's docs.
+2. **A root key confirmed outside Arkiv (reduces trust-on-first-use).** The check is only as good as the root key you start from. Instead of typing a 42-character key you trust blindly, give the project's own GitHub file as an anchor: `--anchor-url github:<owner>/<repo>/<path>/officially.json`. The verdict is `OFFICIAL` only if that file (served by the project's GitHub account, a different credential from any Arkiv key, and a repo other than this tool's — the verdict prints `anchor origin … ≠ tool repo`) names **the same root key**; if it names another key or cannot be read, the verdict is **`UNVERIFIED_KEY`** and exits 1. What you must know independently shrinks from "a hex key" to "the project's GitHub repository", which you can read, star or find from the project's docs.
 
 ```text
-# Demo Swap (synthetic) publishes its root key in this repo: demo/.well-known/officially.json
+# Demo Swap (synthetic) publishes its root key in its OWN repo, not in this tool's: github.com/Ryugi62/demo-swap-site
 $ officially check-tx --to 0x5eed…aaaa --chain 11155111 --origin https://app.demo-swap.example \
-      --root $R --anchor-url github:Ryugi62/officially/demo/.well-known/officially.json --data 0x095ea7b3…bad…ffff
+      --root $R --anchor-url github:Ryugi62/demo-swap-site/.well-known/officially.json --data 0x095ea7b3…bad…ffff
 TRANSACTION FORGED                      # exit 1 — the page said "approve the router"; the calldata names 0xbad…
-origin    OFFICIAL  https://app.demo-swap.example      … key confirmed by anchor: https://raw.githubusercontent.com/Ryugi62/officially/main/demo/.well-known/officially.json
+origin    OFFICIAL  https://app.demo-swap.example      … key confirmed by anchor: https://raw.githubusercontent.com/Ryugi62/demo-swap-site/main/.well-known/officially.json · anchor origin github.com/Ryugi62/demo-swap-site ≠ tool repo Ryugi62/officially
 spender   FORGED    eip155:11155111:0xbad0…0bad        Claimed by 0xcb70…8d6e, which is not a key of the pinned project.
 
 $ …same command, anchor file missing:   UNVERIFIED_KEY (exit 1) — root key NOT confirmed by an independent anchor
 ```
-Full runs, copied from the terminal on 14 Oct 2026: [`out-of-page-check.log`](arkiv/repro-logs/out-of-page-check.log) (a good approve, the swapped spender, a lookalike site) and [`anchor.log`](arkiv/repro-logs/anchor.log) (anchor confirmed, absent, and no anchor at all). Tests: [`tests/domain/anchor.test.ts`](tests/domain/anchor.test.ts) (mismatch beats confirmation; unreadable is never "confirmed").
+An anchor can also be an **ENS name**: `--anchor-url ens:yourproject.eth` reads that name's `officially.rootKey` text record (Sepolia; unit-tested with a fake resolver, no ENS name is registered for the demo). Anchor run with the separate repo: [`anchor-independent.log`](arkiv/repro-logs/anchor-independent.log). Full runs, copied from the terminal on 14 Oct 2026: [`out-of-page-check.log`](arkiv/repro-logs/out-of-page-check.log) (a good approve, the swapped spender, a lookalike site) and [`anchor.log`](arkiv/repro-logs/anchor.log) (anchor confirmed, absent, and no anchor at all). Tests: [`tests/domain/anchor.test.ts`](tests/domain/anchor.test.ts) (mismatch beats confirmation; unreadable is never "confirmed").
 
 | Threat | Covered? |
 |---|---|

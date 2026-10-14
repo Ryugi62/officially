@@ -25936,6 +25936,36 @@ function bindPublicToken(client) {
 	};
 }
 //#endregion
+//#region node_modules/viem/_esm/clients/createPublicClient.js
+/**
+* Creates a Public Client with a given [Transport](https://viem.sh/docs/clients/intro) configured for a [Chain](https://viem.sh/docs/clients/chains).
+*
+* - Docs: https://viem.sh/docs/clients/public
+*
+* A Public Client is an interface to "public" [JSON-RPC API](https://ethereum.org/en/developers/docs/apis/json-rpc/) methods such as retrieving block numbers, transactions, reading from smart contracts, etc through [Public Actions](/docs/actions/public/introduction).
+*
+* @param config - {@link PublicClientConfig}
+* @returns A Public Client. {@link PublicClient}
+*
+* @example
+* import { createPublicClient, http } from 'viem'
+* import { mainnet } from 'viem/chains'
+*
+* const client = createPublicClient({
+*   chain: mainnet,
+*   transport: http(),
+* })
+*/
+function createPublicClient$1(parameters) {
+	const { key = "public", name = "Public Client" } = parameters;
+	return createClient({
+		...parameters,
+		key,
+		name,
+		type: "publicClient"
+	}).extend(publicActions);
+}
+//#endregion
 //#region node_modules/viem/_esm/actions/wallet/addChain.js
 init_toHex();
 /**
@@ -30135,21 +30165,50 @@ async function checkTarget(reader, input) {
 }
 //#endregion
 //#region src/domain/anchor.ts
-var HEX40 = /^0x[0-9a-fA-F]{40}$/;
+var HEX40$1 = /^0x[0-9a-fA-F]{40}$/;
 /** `officially.rootKey` of a well-known file. Anything else is not an anchor. */
 function parseAnchorDoc(text) {
 	try {
 		const k = JSON.parse(text)?.officially?.rootKey;
-		return typeof k === "string" && HEX40.test(k) ? k.toLowerCase() : void 0;
+		return typeof k === "string" && HEX40$1.test(k) ? k.toLowerCase() : void 0;
 	} catch {
 		return;
+	}
+}
+/** The repo of this tool. An anchor that lives here proves little: the tool's author controls both. */
+var TOOL_REPO = "Ryugi62/officially";
+/** Where an anchor lives, in words: `github.com/owner/repo` for GitHub raw/github: refs, `ens:name`, or the https host. */
+function anchorOrigin(source) {
+	if (source.startsWith("ens:")) return {
+		label: source,
+		independent: true
+	};
+	const gh = /^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\//.exec(source);
+	if (gh) {
+		const repo = `${gh[1]}/${gh[2]}`;
+		return {
+			label: `github.com/${repo}`,
+			independent: repo.toLowerCase() !== TOOL_REPO.toLowerCase()
+		};
+	}
+	try {
+		return {
+			label: new URL(source).host,
+			independent: true
+		};
+	} catch {
+		return {
+			label: source,
+			independent: true
+		};
 	}
 }
 /** `github:owner/repo/path` → raw.githubusercontent.com (default branch main); https URLs pass; http is refused. */
 function anchorUrl(ref) {
 	const gh = /^github:([^/\s]+)\/([^/\s@]+)(?:@([^/\s]+))?\/(.+)$/.exec(ref);
 	if (gh) return `https://raw.githubusercontent.com/${gh[1]}/${gh[2]}/${gh[3] ?? "main"}/${gh[4]}`;
-	if (!ref.startsWith("https://")) throw new Error(`Anchor must be https:// or github:owner/repo/path (got ${ref})`);
+	if (/^ens:[^\s/]+$/.test(ref)) return ref;
+	if (!ref.startsWith("https://")) throw new Error(`Anchor must be https://, github:owner/repo/path or ens:name (got ${ref})`);
 	return ref;
 }
 function evaluateAnchors(rootKey, docs) {
@@ -30180,7 +30239,10 @@ function applyAnchor(v, e) {
 		if (v.status !== "OFFICIAL" && v.status !== "PROBATION") return v;
 		return {
 			...v,
-			reasons: [...v.reasons, ...e.confirmedBy.map((s) => `key confirmed by anchor: ${s}`)]
+			reasons: [...v.reasons, ...e.confirmedBy.flatMap((s) => {
+				const o = anchorOrigin(s);
+				return [`key confirmed by anchor: ${s}`, o.independent ? `anchor origin ${o.label} ≠ tool repo ${TOOL_REPO}` : `anchor origin ${o.label} is the same repo as the tool — weak: not an independent credential`];
+			})]
 		};
 	}
 	if (v.status !== "OFFICIAL" && v.status !== "PROBATION") return v;
@@ -30231,6 +30293,78 @@ var HttpAnchorFetcher = class {
 		return text.length > MAX_BYTES ? void 0 : text;
 	}
 };
+//#endregion
+//#region src/adapters/anchor/ens-fetcher.ts
+var ENS_TEXT_KEY = "officially.rootKey";
+var HEX40 = /^0x[0-9a-fA-F]{40}$/;
+/** `ens:<name>` anchors: the name's `officially.rootKey` text record, wrapped as the same JSON an https anchor serves. Anything else reads as absent. */
+var EnsAnchorFetcher = class {
+	resolver;
+	constructor(resolver) {
+		this.resolver = resolver;
+	}
+	async fetchText(ref) {
+		if (!ref.startsWith("ens:")) return void 0;
+		const v = (await this.resolver.text(ref.slice(4), ENS_TEXT_KEY))?.trim();
+		return v && HEX40.test(v) ? JSON.stringify({ officially: { rootKey: v } }) : void 0;
+	}
+};
+/** ens: refs go to ENS, everything else to the HTTPS fetcher. */
+var RoutingAnchorFetcher = class {
+	ens;
+	http;
+	constructor(ens, http) {
+		this.ens = ens;
+		this.http = http;
+	}
+	fetchText(ref) {
+		return (ref.startsWith("ens:") ? this.ens : this.http).fetchText(ref);
+	}
+};
+//#endregion
+//#region node_modules/viem/_esm/chains/definitions/sepolia.js
+var sepolia = /*#__PURE__*/ defineChain({
+	id: 11155111,
+	name: "Sepolia",
+	nativeCurrency: {
+		name: "Sepolia Ether",
+		symbol: "ETH",
+		decimals: 18
+	},
+	rpcUrls: { default: { http: ["https://11155111.rpc.thirdweb.com"] } },
+	blockExplorers: { default: {
+		name: "Etherscan",
+		url: "https://sepolia.etherscan.io",
+		apiUrl: "https://api-sepolia.etherscan.io/api"
+	} },
+	contracts: {
+		multicall3: {
+			address: "0xca11bde05977b3631167028862be2a173976ca11",
+			blockCreated: 751532
+		},
+		ensUniversalResolver: {
+			address: "0xeeeeeeee14d718c2b47d9923deab1335e144eeee",
+			blockCreated: 8928790
+		}
+	},
+	testnet: true
+});
+//#endregion
+//#region src/adapters/anchor/viem-ens.ts
+/** Reads ENS text records on Sepolia (testnet; the entry never touches mainnet). OFFICIALLY_ENS_RPC overrides the RPC. */
+function viemEnsResolver(rpc = process.env.OFFICIALLY_ENS_RPC) {
+	const client = createPublicClient$1({
+		chain: sepolia,
+		transport: http(rpc, {
+			retryCount: 0,
+			timeout: 1e4
+		})
+	});
+	return { text: (name, key) => client.getEnsText({
+		name,
+		key
+	}) };
+}
 //#endregion
 //#region src/domain/transaction.ts
 var UndecodableRequestError = class extends Error {
@@ -30965,7 +31099,7 @@ var HELP = `officially — check that what you are about to trust was published 
 Read (no wallet):
   officially check <link|@handle|0xaddress|eip155:chain:0xaddress> --root <projectRootKey> [--anchor-url <url|github:owner/repo/path>]… [--chain <id>] [--json]
   officially check-tx --to <0x> --data <0x…> --chain <id> [--origin <url>] --root <projectRootKey> [--anchor-url …]… [--json]
-      --anchor-url: a place OUTSIDE Arkiv where the project states its root key (its GitHub repo's .well-known/officially.json).
+      --anchor-url: a place OUTSIDE Arkiv where the project states its root key (its own GitHub repo's .well-known/officially.json, or ens:<name> whose text record officially.rootKey names the key — read on Sepolia).
       With it, OFFICIAL needs the anchor to name the same root key; otherwise the verdict is UNVERIFIED_KEY.
   officially projects [--json]
   officially watch --root <projectRootKey>   live: prints every entity the project's keys create (run it on the team side:
@@ -31007,7 +31141,7 @@ async function anchorEvidence(a, root) {
 	const refs = a.multi["anchor-url"] ?? [];
 	if (!refs.length) return void 0;
 	if (!root) throw new Error("--anchor-url needs --root (the key to confirm)");
-	return confirmRootKey(new HttpAnchorFetcher(), root, refs.map(anchorUrl));
+	return confirmRootKey(new RoutingAnchorFetcher(new EnsAnchorFetcher(viemEnsResolver()), new HttpAnchorFetcher()), root, refs.map(anchorUrl));
 }
 var big = (_, v) => typeof v === "bigint" ? v.toString() : v;
 function printVerdict(v, label) {

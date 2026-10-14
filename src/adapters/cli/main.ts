@@ -5,6 +5,8 @@ import { privateKeyToAccount } from "viem/accounts"
 import { checkTarget } from "../../application/check-target"
 import { anchorGateTransaction, confirmRootKey } from "../../application/confirm-root"
 import { HttpAnchorFetcher } from "../anchor/http-fetcher"
+import { EnsAnchorFetcher, RoutingAnchorFetcher } from "../anchor/ens-fetcher"
+import { viemEnsResolver } from "../anchor/viem-ens"
 import { anchorUrl, applyAnchor } from "../../domain/anchor"
 import { checkTransaction } from "../../application/check-transaction"
 import { keepAlive, publishEndpoints, raiseIncident, renewLeases, rotatePublisher } from "../../application/writes"
@@ -19,7 +21,7 @@ const HELP = `officially — check that what you are about to trust was publishe
 Read (no wallet):
   officially check <link|@handle|0xaddress|eip155:chain:0xaddress> --root <projectRootKey> [--anchor-url <url|github:owner/repo/path>]… [--chain <id>] [--json]
   officially check-tx --to <0x> --data <0x…> --chain <id> [--origin <url>] --root <projectRootKey> [--anchor-url …]… [--json]
-      --anchor-url: a place OUTSIDE Arkiv where the project states its root key (its GitHub repo's .well-known/officially.json).
+      --anchor-url: a place OUTSIDE Arkiv where the project states its root key (its own GitHub repo's .well-known/officially.json, or ens:<name> whose text record officially.rootKey names the key — read on Sepolia).
       With it, OFFICIAL needs the anchor to name the same root key; otherwise the verdict is UNVERIFIED_KEY.
   officially projects [--json]
   officially watch --root <projectRootKey>   live: prints every entity the project's keys create (run it on the team side:
@@ -54,7 +56,7 @@ async function anchorEvidence(a: Args, root: string | undefined) {
   const refs = a.multi["anchor-url"] ?? []
   if (!refs.length) return undefined
   if (!root) throw new Error("--anchor-url needs --root (the key to confirm)")
-  return confirmRootKey(new HttpAnchorFetcher(), root as Address, refs.map(anchorUrl))
+  return confirmRootKey(new RoutingAnchorFetcher(new EnsAnchorFetcher(viemEnsResolver()), new HttpAnchorFetcher()), root as Address, refs.map(anchorUrl))
 }
 const big = (_: string, v: unknown) => (typeof v === "bigint" ? v.toString() : v)
 
