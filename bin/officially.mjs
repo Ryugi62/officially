@@ -30181,25 +30181,30 @@ var TOOL_REPO = "Ryugi62/officially";
 function anchorOrigin(source) {
 	if (source.startsWith("ens:")) return {
 		label: source,
-		independent: true
+		independent: true,
+		sameOwner: false
 	};
 	const gh = /^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\//.exec(source);
 	if (gh) {
 		const repo = `${gh[1]}/${gh[2]}`;
+		const independent = repo.toLowerCase() !== TOOL_REPO.toLowerCase();
 		return {
 			label: `github.com/${repo}`,
-			independent: repo.toLowerCase() !== TOOL_REPO.toLowerCase()
+			independent,
+			sameOwner: (gh[1] ?? "").toLowerCase() === ("Ryugi62/officially".split("/")[0] ?? "").toLowerCase()
 		};
 	}
 	try {
 		return {
 			label: new URL(source).host,
-			independent: true
+			independent: true,
+			sameOwner: false
 		};
 	} catch {
 		return {
 			label: source,
-			independent: true
+			independent: true,
+			sameOwner: false
 		};
 	}
 }
@@ -30245,7 +30250,7 @@ function applyAnchor(v, e) {
 				...dropped,
 				...e.confirmedBy.flatMap((s) => {
 					const o = anchorOrigin(s);
-					return [`key confirmed by anchor: ${s}`, o.independent ? `anchor origin ${o.label} ≠ tool repo ${TOOL_REPO}` : `anchor origin ${o.label} is the same repo as the tool — weak: not an independent credential`];
+					return [`key confirmed by anchor: ${s}`, o.independent ? `anchor origin ${o.label} ≠ tool repo ${TOOL_REPO}${o.sameOwner ? " · same owner — weak anchor (one GitHub account controls both)" : ""}` : `anchor origin ${o.label} is the same repo as the tool — weak: not an independent credential`];
 				})
 			]
 		};

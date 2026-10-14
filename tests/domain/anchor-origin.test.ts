@@ -23,7 +23,7 @@ describe("anchorOrigin", () => {
     expect(anchorOrigin(TOOL).independent).toBe(false)
   })
   it("an ENS name and a project's own https host are independent of the tool", () => {
-    expect(anchorOrigin("ens:demo-swap.eth")).toEqual({ label: "ens:demo-swap.eth", independent: true })
+    expect(anchorOrigin("ens:demo-swap.eth")).toEqual({ label: "ens:demo-swap.eth", independent: true, sameOwner: false })
     expect(anchorOrigin("https://demo-swap.example/.well-known/officially.json").independent).toBe(true)
   })
 })
@@ -41,6 +41,25 @@ describe("verdict text shows the anchor origin", () => {
   it("tool-repo anchor: says it is the same repo", () => {
     const v = applyAnchor(official(), evaluateAnchors(ROOT, [{ source: TOOL, text: DOC(ROOT) }]))
     expect(v.reasons.join("\n")).toContain("same repo as the tool")
+  })
+})
+
+describe("same owner is flagged weak (row: trust anchor owned apart from the tool)", () => {
+  const T = normalizeTarget("https://app.demo-swap.example")
+  const official = () => decideVerdict({
+    targetHash: hashTarget(T), target: T.value, currentBlock: 200_000n, pin: { rootKey: ROOT },
+    projectRecords: [record({ publisher: PUB_A })], claims: [claim({ targetHash: hashTarget(T), creator: PUB_A, createdAtBlock: 1n })], incidents: [],
+  })
+  it("another repo under the SAME GitHub account as the tool: anchorOrigin.sameOwner and the verdict says 'same owner — weak anchor'", () => {
+    expect(anchorOrigin(SITE).sameOwner).toBe(true)
+    const v = applyAnchor(official(), evaluateAnchors(ROOT, [{ source: SITE, text: DOC(ROOT) }]))
+    expect(v.reasons.join("\n")).toContain("same owner — weak anchor")
+  })
+  it("a repo under another account is not same-owner and gets no weak note", () => {
+    const other = "https://raw.githubusercontent.com/someone-else/their-site/main/.well-known/officially.json"
+    expect(anchorOrigin(other).sameOwner).toBe(false)
+    const v = applyAnchor(official(), evaluateAnchors(ROOT, [{ source: other, text: DOC(ROOT) }]))
+    expect(v.reasons.join("\n")).not.toContain("weak anchor")
   })
 })
 

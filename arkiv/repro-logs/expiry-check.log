@@ -1,13 +1,13 @@
-checked at 2026-10-14T07:56:14.223Z · chain head block 557411 · 20 live entities
-2026-10-20T12:00Z  block 823925  endpoint 0x5729341342…  https://v1.demo-swap.example (v1 app (retires 20 Oct))   << before 24 Oct
-2026-10-20T12:00Z  block 823925  endpoint 0x07efc4fc35…  https://v1.demo-swap.example (v1 app (retires 20 Oct))   << before 24 Oct
-2026-10-21T12:00Z  block 867125  endpoint 0x6d8391e29d…  eip155:11155111:0x5eed00000000000000000000000000000000a110 (Router v1 (retires 21 Oct))   << before 24 Oct
-2026-10-21T12:00Z  block 867125  endpoint 0x8e11b133dd…  eip155:11155111:0x5eed00000000000000000000000000000000a110 (Router v1 (retires 21 Oct))   << before 24 Oct
-2026-10-22T12:00Z  block 910325  endpoint 0x07886d27ed…  https://beta.demo-swap.example (Beta app (retires 22 Oct))   << before 24 Oct
-2026-10-22T12:00Z  block 910325  endpoint 0xe9a60bfdb6…  https://beta.demo-swap.example (Beta app (retires 22 Oct))   << before 24 Oct
+checked at 2026-10-14T08:35:36.032Z · chain head block 558591 · 20 live entities
+2026-10-25T00:00Z  block 1018326  endpoint 0x6d8391e29d…  eip155:11155111:0x5eed00000000000000000000000000000000a110 (Router v1 (retires 21 Oct))
+2026-10-25T00:00Z  block 1018326  endpoint 0x5729341342…  https://v1.demo-swap.example (v1 app (retires 20 Oct))
+2026-10-25T00:00Z  block 1018326  endpoint 0x07886d27ed…  https://beta.demo-swap.example (Beta app (retires 22 Oct))
 2026-10-25T00:00Z  block 1018326  incident 0xb5e8e07b0c…  Fake airdrop site sev3
 2026-10-25T00:00Z  block 1018326  incident 0x828e576bd4…  Fake airdrop site sev3
+2026-10-25T00:00Z  block 1018326  endpoint 0x8e11b133dd…  eip155:11155111:0x5eed00000000000000000000000000000000a110 (Router v1 (retires 21 Oct))
 2026-10-25T00:00Z  block 1018326  incident 0x4b3f243a1d…  Retired frontend sev2
+2026-10-25T00:00Z  block 1018327  endpoint 0xe9a60bfdb6…  https://beta.demo-swap.example (Beta app (retires 22 Oct))
+2026-10-25T00:00Z  block 1018327  endpoint 0x07efc4fc35…  https://v1.demo-swap.example (v1 app (retires 20 Oct))
 2026-11-11T02:10Z  block 1756628  endpoint 0xc7a5a9b984…  eip155:11155111:0xbad0000000000000000000000000000000000bad (Swap router v2)
 2026-11-11T02:12Z  block 1756688  endpoint 0x996047487d…  https://app.demo-swap.example (App)
 2026-11-11T02:12Z  block 1756688  endpoint 0x4862338af3…  eip155:11155111:0x5eed00000000000000000000000000000000a11c (Swap router)
@@ -19,5 +19,5 @@ checked at 2026-10-14T07:56:14.223Z · chain head block 557411 · 20 live entiti
 2026-11-11T02:59Z  block 1758121  endpoint 0xa0c5af7d23…  https://app.demo-swap.example (App)
 2026-11-11T02:59Z  block 1758121  endpoint 0x06bcf0fd67…  eip155:11155111:0x5eed00000000000000000000000000000000aaaa (USDC (demo) token)
 2027-10-14T07:35Z  block 16324779  project  0xc99e269e42…  project record
-lapse before 24 Oct 2026: 6 (0 incidents, 6 endpoints)
-lapse on/after 24 Oct 2026: 14
+lapse before 24 Oct 2026: 0 (0 incidents, 0 endpoints)
+lapse on/after 24 Oct 2026: 20

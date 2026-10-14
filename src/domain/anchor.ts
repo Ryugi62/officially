@@ -32,20 +32,23 @@ export interface AnchorOrigin {
   label: string
   /** false when the anchor sits in the tool's own repo (same credential as the code). */
   independent: boolean
+  /** true when the anchor sits in another repo but under the same GitHub account as the tool: one credential still controls both. */
+  sameOwner: boolean
 }
 
 /** Where an anchor lives, in words: `github.com/owner/repo` for GitHub raw/github: refs, `ens:name`, or the https host. */
 export function anchorOrigin(source: string): AnchorOrigin {
-  if (source.startsWith("ens:")) return { label: source, independent: true }
+  if (source.startsWith("ens:")) return { label: source, independent: true, sameOwner: false }
   const gh = /^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\//.exec(source)
   if (gh) {
     const repo = `${gh[1]}/${gh[2]}`
-    return { label: `github.com/${repo}`, independent: repo.toLowerCase() !== TOOL_REPO.toLowerCase() }
+    const independent = repo.toLowerCase() !== TOOL_REPO.toLowerCase()
+    return { label: `github.com/${repo}`, independent, sameOwner: (gh[1] ?? "").toLowerCase() === (TOOL_REPO.split("/")[0] ?? "").toLowerCase() }
   }
   try {
-    return { label: new URL(source).host, independent: true }
+    return { label: new URL(source).host, independent: true, sameOwner: false }
   } catch {
-    return { label: source, independent: true }
+    return { label: source, independent: true, sameOwner: false }
   }
 }
 
@@ -84,7 +87,7 @@ export function applyAnchor(v: Verdict, e: AnchorEvidence): Verdict {
     const dropped = e.reasons.filter((r) => r.startsWith("anchor ignored "))
     return { ...v, reasons: [...v.reasons, ...dropped, ...e.confirmedBy.flatMap((s) => {
       const o = anchorOrigin(s)
-      return [`key confirmed by anchor: ${s}`, o.independent ? `anchor origin ${o.label} ≠ tool repo ${TOOL_REPO}` : `anchor origin ${o.label} is the same repo as the tool — weak: not an independent credential`]
+      return [`key confirmed by anchor: ${s}`, o.independent ? `anchor origin ${o.label} ≠ tool repo ${TOOL_REPO}${o.sameOwner ? " · same owner — weak anchor (one GitHub account controls both)" : ""}` : `anchor origin ${o.label} is the same repo as the tool — weak: not an independent credential`]
     })] }
   }
   if (v.status !== "OFFICIAL" && v.status !== "PROBATION") return v

@@ -1,0 +1,6 @@
+$ officially check https://app.demo-swap.example --root $R --anchor-url github:Ryugi62/demo-swap-site/.well-known/officially.json   (run 2026-10-14 after the same-owner note)
+OFFICIAL  https://app.demo-swap.example
+          Published by 0x7169173d0d00db282f385fee8bece2d67d10c6f0, a key the pinned root trusts.
+          The lease is live; it lapses unless the project renews it.
+          key confirmed by anchor: https://raw.githubusercontent.com/Ryugi62/demo-swap-site/main/.well-known/officially.json
+          anchor origin github.com/Ryugi62/demo-swap-site ≠ tool repo Ryugi62/officially · same owner — weak anchor (one GitHub account controls both)
